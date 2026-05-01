@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 38 38% 96%;
+    --foreground: 22 45% 12%;
+    --card: 36 36% 97%;
+    --card-foreground: 22 45% 12%;
+    --popover: 36 36% 97%;
+    --popover-foreground: 22 45% 12%;
+    --primary: 22 47% 24%;
+    --primary-foreground: 38 38% 96%;
+    --secondary: 33 35% 90%;
+    --secondary-foreground: 22 45% 18%;
+    --muted: 33 30% 92%;
+    --muted-foreground: 22 15% 35%;
+    --accent: 30 40% 88%;
+    --accent-foreground: 22 45% 18%;
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 33 25% 85%;
+    --input: 33 25% 85%;
+    --ring: 22 45% 24%;
+    --radius: 0.25rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+  h1, h2, h3, h4 { @apply font-serif tracking-tight; }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+.fade-edge {
+  -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+}
