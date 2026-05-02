@@ -27,7 +27,7 @@ async function shopifyFetch<T = any>({ query, variables = {} }: { query: string;
       'X-Shopify-Storefront-Access-Token': TOKEN as string,
     },
     body: JSON.stringify({ query, variables }),
-    next: { revalidate: 60 },
+    next: { revalidate: 3600 },
   });
   const json = await res.json();
   if (json.errors) throw new Error(JSON.stringify(json.errors));

@@ -63,7 +63,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
           image: product.images?.[0],
           size,
           qty,
-          variantId,
+          variantId: variantId || undefined,
         },
       ];
     });
