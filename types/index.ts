@@ -49,3 +49,45 @@ export interface Cart {
   checkoutUrl: string;
   totalQuantity: number;
 }
+
+// Authentication & Customer Types
+export interface Customer {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+}
+
+export interface LineItem {
+  title: string;
+  quantity: number;
+  price?: number;
+  image?: string;
+}
+
+export type FulfillmentStatus = 'UNFULFILLED' | 'PARTIAL' | 'FULFILLED';
+
+export interface Order {
+  id: string;
+  orderNumber?: string;
+  processedAt: string;
+  fulfillmentStatus: FulfillmentStatus;
+  totalPrice?: number;
+  currency?: string;
+  lineItems: LineItem[];
+}
+
+export interface AuthState {
+  customer: Customer | null;
+  accessToken: string | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export type AuthContextType = AuthState & {
+  setToken: (token: string, customer: Customer) => void;
+  clearToken: () => void;
+  hydrate: () => void;
+  setError: (error: string | null) => void;
+};

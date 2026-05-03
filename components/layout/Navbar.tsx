@@ -2,10 +2,19 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { Menu, Search, ShoppingBag, X, Heart } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Menu, Search, ShoppingBag, X, Heart, LogOut, LogIn, Loader2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useCart } from '@/lib/cart-context';
 import { useWishlist } from '@/lib/wishlist-context';
+import { useAuthContext } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 import SearchDialog from '@/components/search/SearchDialog';
 
@@ -20,11 +29,14 @@ const NAV_LINKS = [
 ];
 
 export default function Navbar() {
+  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const { count, setOpen: setCartOpen } = useCart();
   const { count: wishCount } = useWishlist();
+  const { accessToken, customer, clearToken } = useAuthContext();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -32,6 +44,20 @@ export default function Navbar() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  // Hydrate after mount
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+
+  const handleLogout = () => {
+    clearToken();
+    router.push('/');
+  };
+
+  const handleLoginClick = () => {
+    router.push('/login');
+  };
 
   return (
     <>
@@ -58,7 +84,29 @@ export default function Navbar() {
                       {NAV_LINKS.map((l) => (
                         <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="font-serif text-2xl py-3 text-brand-900 border-b border-border/50 last:border-0 hover:text-brand-500 transition-colors">{l.label}</Link>
                       ))}
-                      <Link href="/wishlist" onClick={() => setOpen(false)} className="font-serif text-2xl py-3 text-brand-900 border-b border-border/50 hover:text-brand-500">Wishlist</Link>
+                      <Link href="/wishlist" onClick={() => setOpen(false)} className="font-serif text-2xl py-3 text-brand-900 border-b border-border/50 hover:text-brand-500 transition-colors">Wishlist</Link>
+                      
+                      {/* Mobile Auth Section */}
+                      <div className="border-t border-border/50 mt-6 pt-6">
+                        {hydrated && accessToken && customer ? (
+                          <>
+                            <p className="text-xs uppercase tracking-[0.1em] text-slate-600 mb-4">Account</p>
+                            <Link href="/account/orders" onClick={() => setOpen(false)} className="font-serif text-lg py-2 text-brand-900 hover:text-brand-500 transition-colors flex items-center gap-2">
+                              <ShoppingBag className="h-4 w-4" />
+                              My Orders
+                            </Link>
+                            <button onClick={() => { handleLogout(); setOpen(false); }} className="font-serif text-lg py-2 text-brand-900 hover:text-red-600 transition-colors flex items-center gap-2 w-full text-left">
+                              <LogOut className="h-4 w-4" />
+                              Logout
+                            </button>
+                          </>
+                        ) : (
+                          <button onClick={() => { handleLoginClick(); setOpen(false); }} className="font-serif text-lg py-3 text-brand-900 hover:text-brand-500 transition-colors flex items-center gap-2 w-full">
+                            <LogIn className="h-4 w-4" />
+                            Sign In
+                          </button>
+                        )}
+                      </div>
                     </nav>
                     <div className="mt-auto px-6 py-6 text-xs uppercase tracking-[0.25em] text-muted-foreground">Suitique Designs · Luxe Collection</div>
                   </div>
@@ -94,6 +142,50 @@ export default function Navbar() {
                 <ShoppingBag className="h-5 w-5" />
                 {count > 0 && <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-700 text-cream-50 text-[10px] font-medium flex items-center justify-center">{count}</span>}
               </button>
+
+              {/* Desktop Auth Menu */}
+              {hydrated && (
+                accessToken && customer ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        aria-label="Account menu"
+                        className="hidden md:flex ml-2 px-3 py-2 rounded-md hover:bg-slate-100 transition-colors text-sm font-medium text-slate-900"
+                      >
+                        {customer.firstName || 'Account'}
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <div className="px-2 py-1.5 text-sm font-medium text-slate-900">
+                        {customer.email}
+                      </div>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link href="/account/orders" className="flex items-center gap-2">
+                          <ShoppingBag className="h-4 w-4" />
+                          My Orders
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={handleLogout}
+                        className="text-red-600 focus:text-red-600 focus:bg-red-50 flex items-center gap-2"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Logout
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <button
+                    onClick={handleLoginClick}
+                    className="hidden md:inline-flex ml-2 px-3 py-2 rounded-md hover:bg-slate-100 transition-colors text-sm font-medium text-slate-900 items-center gap-2"
+                  >
+                    <LogIn className="h-4 w-4" />
+                    Sign In
+                  </button>
+                )
+              )}
             </div>
           </div>
         </div>

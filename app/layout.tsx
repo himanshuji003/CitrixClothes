@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
 import { CartProvider } from '@/lib/cart-context';
 import { WishlistProvider } from '@/lib/wishlist-context';
+import { AuthProvider } from '@/lib/auth-context';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import CartDrawer from '@/components/cart/CartDrawer';
@@ -45,15 +46,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
       <body className="min-h-screen bg-background text-foreground font-sans antialiased">
-        <WishlistProvider>
-          <CartProvider>
-            <Navbar />
-            <main className="min-h-[60vh] pt-[68px] md:pt-[88px]">{children}</main>
-            <Footer />
-            <CartDrawer />
-            <Toaster richColors position="top-center" />
-          </CartProvider>
-        </WishlistProvider>
+        <AuthProvider>
+          <WishlistProvider>
+            <CartProvider>
+              <Navbar />
+              <main className="min-h-[60vh] pt-[68px] md:pt-[88px]">{children}</main>
+              <Footer />
+              <CartDrawer />
+              <Toaster richColors position="top-center" />
+            </CartProvider>
+          </WishlistProvider>
+        </AuthProvider>
       </body>
     </html>
   );
