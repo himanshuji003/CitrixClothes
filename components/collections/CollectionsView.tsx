@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { SlidersHorizontal, ArrowUpDown } from 'lucide-react';
 import ProductGrid from '@/components/product/ProductGrid';
 import type { Product } from '@/types';
@@ -50,7 +50,8 @@ export default function CollectionsView({ products, title, tagline }: Props) {
             </SheetTrigger>
             <SheetContent side="bottom" className="md:!max-w-md md:!ml-auto md:!right-0 md:!left-auto md:h-full md:!rounded-none rounded-t-2xl bg-cream-50 border-border p-0 max-h-[85vh] md:max-h-full overflow-y-auto">
               <div className="px-6 py-6">
-                <div className="font-serif text-2xl text-brand-900 mb-6">Filter</div>
+                <SheetTitle className="font-serif text-2xl text-brand-900 mb-6">Filter</SheetTitle>
+                <SheetDescription className="text-sm text-muted-foreground mb-6">Select sizes and set your price range to filter products</SheetDescription>
                 <div className="mb-8">
                   <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground mb-3">Size</div>
                   <div className="flex flex-wrap gap-2">

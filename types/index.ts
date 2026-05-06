@@ -86,8 +86,7 @@ export interface AuthState {
 }
 
 export type AuthContextType = AuthState & {
-  setToken: (token: string, customer: Customer) => void;
+  setToken: (token: string | null, customer: Customer | null) => void;
   clearToken: () => void;
-  hydrate: () => void;
   setError: (error: string | null) => void;
 };

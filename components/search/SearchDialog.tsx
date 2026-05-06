@@ -3,7 +3,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@/components/ui/visually-hidden';
 import { formatINR } from '@/lib/products';
 import type { Product } from '@/types';
 
@@ -31,6 +32,12 @@ export default function SearchDialog({ open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0 bg-cream-50 border-border gap-0 overflow-hidden">
+        <DialogTitle asChild>
+          <VisuallyHidden>Search Products</VisuallyHidden>
+        </DialogTitle>
+        <DialogDescription asChild>
+          <VisuallyHidden>Search for products by name, collection, or description</VisuallyHidden>
+        </DialogDescription>
         <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
           <Search className="h-5 w-5 text-brand-900" />
           <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search Organza, Silk, Chanderi…" className="flex-1 bg-transparent text-base placeholder:text-muted-foreground focus:outline-none text-brand-900" />

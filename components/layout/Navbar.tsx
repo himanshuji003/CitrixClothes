@@ -2,21 +2,18 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Menu, Search, ShoppingBag, X, Heart, LogOut, LogIn, Loader2 } from 'lucide-react';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Menu, Search, ShoppingBag, X, Heart, LogOut, User } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { useCart } from '@/lib/cart-context';
 import { useWishlist } from '@/lib/wishlist-context';
-import { useAuthContext } from '@/lib/auth-context';
+import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 import SearchDialog from '@/components/search/SearchDialog';
+
+// ✅ PHASE 2: OAuth Authentication
+// Users now redirect to /login and /signup pages which initiate OAuth flow
+// import { ShopifyLoginButton } from '@/components/auth/ShopifyLoginButton';
+// import { ShopifySignupButton } from '@/components/auth/ShopifySignupButton';
 
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_refined-retail-1/artifacts/7sv48thr_image.png';
 
@@ -29,14 +26,12 @@ const NAV_LINKS = [
 ];
 
 export default function Navbar() {
-  const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
   const { count, setOpen: setCartOpen } = useCart();
   const { count: wishCount } = useWishlist();
-  const { accessToken, customer, clearToken } = useAuthContext();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -44,20 +39,6 @@ export default function Navbar() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
-  // Hydrate after mount
-  useEffect(() => {
-    setHydrated(true);
-  }, []);
-
-  const handleLogout = () => {
-    clearToken();
-    router.push('/');
-  };
-
-  const handleLoginClick = () => {
-    router.push('/login');
-  };
 
   return (
     <>
@@ -77,7 +58,8 @@ export default function Navbar() {
                 <SheetContent side="left" className="w-full sm:max-w-md bg-cream-50 border-r border-border p-0">
                   <div className="flex flex-col h-full">
                     <div className="flex items-center justify-between px-6 py-5 border-b border-border">
-                      <span className="font-serif text-lg tracking-[0.2em] text-brand-900">MENU</span>
+                      <SheetTitle className="font-serif text-lg tracking-[0.2em] text-brand-900">MENU</SheetTitle>
+                      <SheetDescription className="hidden">Navigation menu</SheetDescription>
                       <button onClick={() => setOpen(false)} className="p-2 -mr-2" aria-label="Close"><X className="h-5 w-5" /></button>
                     </div>
                     <nav className="flex flex-col px-6 py-6 gap-1">
@@ -86,25 +68,30 @@ export default function Navbar() {
                       ))}
                       <Link href="/wishlist" onClick={() => setOpen(false)} className="font-serif text-2xl py-3 text-brand-900 border-b border-border/50 hover:text-brand-500 transition-colors">Wishlist</Link>
                       
-                      {/* Mobile Auth Section */}
-                      <div className="border-t border-border/50 mt-6 pt-6">
-                        {hydrated && accessToken && customer ? (
+                      {/* Mobile Auth Section - OAuth */}
+                      <div className="border-t border-border/50 mt-6 pt-6 flex flex-col gap-3">
+                        {isLoading ? (
+                          <div className="h-10 bg-cream-200 rounded animate-pulse" />
+                        ) : isAuthenticated && user ? (
                           <>
-                            <p className="text-xs uppercase tracking-[0.1em] text-slate-600 mb-4">Account</p>
-                            <Link href="/account/orders" onClick={() => setOpen(false)} className="font-serif text-lg py-2 text-brand-900 hover:text-brand-500 transition-colors flex items-center gap-2">
-                              <ShoppingBag className="h-4 w-4" />
-                              My Orders
+                            <Link href="/account" onClick={() => setOpen(false)} className="w-full px-4 py-2 text-center text-sm uppercase tracking-[0.18em] text-brand-900 border border-brand-900 rounded hover:bg-brand-900 hover:text-cream-50 transition-colors flex items-center justify-center gap-2">
+                              <User className="h-4 w-4" />
+                              {user.firstName || 'Account'}
                             </Link>
-                            <button onClick={() => { handleLogout(); setOpen(false); }} className="font-serif text-lg py-2 text-brand-900 hover:text-red-600 transition-colors flex items-center gap-2 w-full text-left">
+                            <button onClick={async () => { await logout(); setOpen(false); }} disabled={isLoading} className="w-full px-4 py-2 text-center text-sm uppercase tracking-[0.18em] text-red-600 border border-red-600 rounded hover:bg-red-600 hover:text-cream-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                               <LogOut className="h-4 w-4" />
                               Logout
                             </button>
                           </>
                         ) : (
-                          <button onClick={() => { handleLoginClick(); setOpen(false); }} className="font-serif text-lg py-3 text-brand-900 hover:text-brand-500 transition-colors flex items-center gap-2 w-full">
-                            <LogIn className="h-4 w-4" />
-                            Sign In
-                          </button>
+                          <>
+                            <Link href="/login" onClick={() => setOpen(false)} className="w-full px-4 py-2 text-center text-sm uppercase tracking-[0.18em] text-brand-900 border border-brand-900 rounded hover:bg-brand-900 hover:text-cream-50 transition-colors">
+                              Login
+                            </Link>
+                            <Link href="/signup" onClick={() => setOpen(false)} className="w-full px-4 py-2 text-center text-sm uppercase tracking-[0.18em] text-cream-50 bg-brand-700 rounded hover:bg-brand-900 transition-colors">
+                              Sign Up
+                            </Link>
+                          </>
                         )}
                       </div>
                     </nav>
@@ -143,49 +130,31 @@ export default function Navbar() {
                 {count > 0 && <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-700 text-cream-50 text-[10px] font-medium flex items-center justify-center">{count}</span>}
               </button>
 
-              {/* Desktop Auth Menu */}
-              {hydrated && (
-                accessToken && customer ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        aria-label="Account menu"
-                        className="hidden md:flex ml-2 px-3 py-2 rounded-md hover:bg-slate-100 transition-colors text-sm font-medium text-slate-900"
-                      >
-                        {customer.firstName || 'Account'}
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <div className="px-2 py-1.5 text-sm font-medium text-slate-900">
-                        {customer.email}
-                      </div>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link href="/account/orders" className="flex items-center gap-2">
-                          <ShoppingBag className="h-4 w-4" />
-                          My Orders
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={handleLogout}
-                        className="text-red-600 focus:text-red-600 focus:bg-red-50 flex items-center gap-2"
-                      >
-                        <LogOut className="h-4 w-4" />
-                        Logout
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+              {/* Desktop Auth Buttons - OAuth */}
+              <div className="hidden md:flex items-center gap-2 ml-2">
+                {isLoading ? (
+                  <div className="h-8 w-24 bg-cream-200 rounded animate-pulse" />
+                ) : isAuthenticated && user ? (
+                  <>
+                    <Link href="/account" className="px-4 py-1 text-xs uppercase tracking-[0.18em] text-brand-900 border border-brand-900 rounded hover:bg-brand-900 hover:text-cream-50 transition-colors flex items-center gap-1">
+                      <User className="h-4 w-4" />
+                      {user.firstName || 'Account'}
+                    </Link>
+                    <button onClick={logout} disabled={isLoading} className="px-3 py-1 text-xs text-red-600 hover:text-red-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Logout">
+                      <LogOut className="h-4 w-4" />
+                    </button>
+                  </>
                 ) : (
-                  <button
-                    onClick={handleLoginClick}
-                    className="hidden md:inline-flex ml-2 px-3 py-2 rounded-md hover:bg-slate-100 transition-colors text-sm font-medium text-slate-900 items-center gap-2"
-                  >
-                    <LogIn className="h-4 w-4" />
-                    Sign In
-                  </button>
-                )
-              )}
+                  <>
+                    <Link href="/login" className="px-4 py-1 text-xs uppercase tracking-[0.18em] text-brand-900 border border-brand-900 rounded hover:bg-brand-900 hover:text-cream-50 transition-colors">
+                      Login
+                    </Link>
+                    <Link href="/signup" className="px-4 py-1 text-xs uppercase tracking-[0.18em] text-cream-50 bg-brand-700 rounded hover:bg-brand-900 transition-colors">
+                      Sign Up
+                    </Link>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

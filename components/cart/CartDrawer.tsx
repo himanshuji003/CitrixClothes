@@ -1,6 +1,6 @@
 'use client';
 import Image from 'next/image';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/lib/cart-context';
@@ -74,12 +74,8 @@ export default function CartDrawer() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent side="right" className="w-full sm:max-w-md bg-cream-50 border-l border-border p-0 flex flex-col">
-        <div className="flex items-center justify-between px-5 py-5 border-b border-border">
-          <div>
-            <div className="font-serif text-xl text-brand-900">Your Bag</div>
-            <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-0.5">{count} {count === 1 ? 'piece' : 'pieces'}</div>
-          </div>
-        </div>
+        <SheetTitle className="font-serif text-xl text-brand-900 px-5 py-5 border-b border-border">Your Bag</SheetTitle>
+        <SheetDescription className="text-xs uppercase tracking-[0.2em] text-muted-foreground px-5 pb-3">{count} {count === 1 ? 'piece' : 'pieces'}</SheetDescription>
 
         {items.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">

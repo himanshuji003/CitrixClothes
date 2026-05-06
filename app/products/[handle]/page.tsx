@@ -2,10 +2,13 @@ import { notFound } from 'next/navigation';
 import { getProductByHandle, getProducts } from '@/lib/shopify';
 import ProductDetail from '@/components/product/ProductDetail';
 
-interface Params { handle: string }
-
-export async function generateMetadata({ params }: { params: Params }) {
-  const product = await getProductByHandle(params.handle);
+export async function generateMetadata({ 
+  params 
+}: { 
+  params: Promise<{ handle: string }> 
+}) {
+  const { handle } = await params;
+  const product = await getProductByHandle(handle);
   if (!product) return { title: 'Not found' };
   return {
     title: product.title,
@@ -14,10 +17,15 @@ export async function generateMetadata({ params }: { params: Params }) {
   };
 }
 
-export default async function ProductPage({ params }: { params: Params }) {
-  const product = await getProductByHandle(params.handle);
+export default async function ProductPage({ 
+  params 
+}: { 
+  params: Promise<{ handle: string }> 
+}) {
+  const { handle } = await params;
+  const product = await getProductByHandle(handle);
   if (!product) return notFound();
   const all = await getProducts();
-  const related = all.filter((p) => p.handle !== params.handle && p.collection === product.collection).slice(0, 4);
+  const related = all.filter((p) => p.handle !== handle && p.collection === product.collection).slice(0, 4);
   return <ProductDetail product={product} related={related} />;
 }
