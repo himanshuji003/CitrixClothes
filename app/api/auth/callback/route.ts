@@ -310,18 +310,9 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ✅ Log token prefixes safely (no sensitive values)
-    console.log('[OAuth Callback] Token prefixes received from Shopify:', {
-      accessTokenPrefix: access_token?.slice(0, 8),
-      refreshTokenPrefix: refresh_token?.slice(0, 8),
-      idTokenPrefix: id_token?.slice(0, 8),
-      tokenType: (tokenData as TokenResponse).token_type,
-      expiresIn: expires_in,
-      timestamp: new Date().toISOString(),
-    });
-
-    console.log('[OAuth Callback] Token exchange successful with PKCE', {
-      tokenLength: access_token.length,
+    // ✅ Log only safe info (never log actual token values or prefixes)
+    console.log('[OAuth Callback] Token received from Shopify:', {
+      hasAccessToken: !!access_token,
       hasRefreshToken: !!refresh_token,
       hasIdToken: !!id_token,
       expiresIn: expires_in,
@@ -339,7 +330,7 @@ export async function GET(req: NextRequest) {
     const shouldSetSecure = isProduction || isHttpsUrl;
 
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[OAuth Callback] 🍪 Token Cookie Configuration:', {
+      console.log('[OAuth Callback] 🍪 Cookie Configuration:', {
         baseUrl: baseUrl,
         isHttpsUrl: isHttpsUrl,
         NODE_ENV: process.env.NODE_ENV,
@@ -383,14 +374,7 @@ export async function GET(req: NextRequest) {
     cookieStore.delete('oauth_state');
     cookieStore.delete('oauth_nonce');
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[OAuth Callback] ✅ Temporary cookies cleared after token exchange', {
-        cleared: ['pkce_verifier', 'oauth_state', 'oauth_nonce'],
-        timestamp: new Date().toISOString(),
-      });
-    }
-
-    console.log('[OAuth Callback] Authentication complete - cookies updated', {
+    console.log('[OAuth Callback] Authentication complete - tokens stored securely', {
       action: 'TOKENS_STORED',
       tokensSet: {
         accessToken: !!access_token,

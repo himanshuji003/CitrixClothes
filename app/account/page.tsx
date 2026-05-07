@@ -39,37 +39,41 @@ interface OrderTotalPrice {
 
 interface Order {
   id: string;
-  number: number;
-  processedAt: string;
-  financialStatus: string;
-  fulfillmentStatus: string;
-  totalPrice: OrderTotalPrice;
-  statusUrl: string;
-  lineItems: OrderLineItem[];
+  name: string;
+  processedAt?: string;
+  financialStatus?: string | null;
+  fulfillmentStatus?: string | null;
+  totalPrice?: OrderTotalPrice;
+  statusUrl?: string | null;
+  lineItems?: OrderLineItem[];
 }
 
 function getStatusColor(
-  status: string,
-  type: 'financial' | 'fulfillment'
+  status?: string | null,
+  type?: 'financial' | 'fulfillment'
 ): { bg: string; text: string; dot: string } {
+  const normalizedStatus = (status ?? 'unknown').toLowerCase();
+
   if (type === 'financial') {
-    if (status.toLowerCase() === 'paid') return { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' };
-    if (status.toLowerCase() === 'pending') return { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' };
-    if (status.toLowerCase() === 'refunded') return { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' };
+    if (normalizedStatus === 'paid') return { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' };
+    if (normalizedStatus === 'pending') return { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' };
+    if (normalizedStatus === 'refunded') return { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' };
     return { bg: 'bg-gray-50', text: 'text-gray-700', dot: 'bg-gray-500' };
   }
 
-  if (status.toLowerCase() === 'fulfilled') return { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' };
-  if (status.toLowerCase() === 'unshipped') return { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' };
-  if (status.toLowerCase() === 'partially_fulfilled')
+  if (normalizedStatus === 'fulfilled') return { bg: 'bg-green-50', text: 'text-green-700', dot: 'bg-green-500' };
+  if (normalizedStatus === 'unshipped') return { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' };
+  if (normalizedStatus === 'partially_fulfilled')
     return { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' };
-  if (status.toLowerCase() === 'cancelled') return { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' };
+  if (normalizedStatus === 'cancelled') return { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' };
   return { bg: 'bg-gray-50', text: 'text-gray-700', dot: 'bg-gray-500' };
 }
 
-function formatCurrency(amount: string, currency: string): string {
+function formatCurrency(amount?: string, currency?: string): string {
+  if (!amount) return '--';
   try {
     const num = parseFloat(amount);
+    if (isNaN(num)) return '--';
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: currency || 'INR',
@@ -77,19 +81,22 @@ function formatCurrency(amount: string, currency: string): string {
       maximumFractionDigits: 2,
     }).format(num);
   } catch {
-    return `${amount} ${currency}`;
+    return '--';
   }
 }
 
-function formatDate(dateString: string): string {
+function formatDate(dateString?: string): string {
+  if (!dateString) return 'Date unavailable';
   try {
-    return new Date(dateString).toLocaleDateString('en-IN', {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Date unavailable';
+    return date.toLocaleDateString('en-IN', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
     });
   } catch {
-    return dateString;
+    return 'Date unavailable';
   }
 }
 
@@ -112,14 +119,16 @@ export default function AccountPage() {
 
         try {
           // Fetch user data
-          console.log('[Account] Fetching user data');
+          console.log('[Account] Fetching user data from /api/account/me');
           const userResponse = await fetch('/api/account/me', {
             signal: controller.signal,
           });
 
+          console.log('[Account] User data response status:', userResponse.status);
+
           if (userResponse.status === 401) {
             // Token invalid or expired, redirect to login
-            console.log('[Account] Unauthorized response (401) - redirecting to login');
+            console.log('[Account] ❌ Unauthorized response (401) - redirecting to login');
             clearTimeout(timeoutId);
             router.push('/login');
             return;
@@ -127,8 +136,14 @@ export default function AccountPage() {
 
           const userData = await userResponse.json();
 
+          console.log('[Account] User data retrieved:', {
+            hasUser: !!userData.user,
+            userId: userData.user?.id,
+            userEmail: userData.user?.email,
+          });
+
           if (!userData.user) {
-            console.log('[Account] No user found, redirecting to login');
+            console.log('[Account] ❌ No user found in response, redirecting to login');
             clearTimeout(timeoutId);
             router.push('/login');
             return;
@@ -137,16 +152,28 @@ export default function AccountPage() {
           setUser(userData.user);
 
           // Fetch orders data
-          console.log('[Account] Fetching orders');
-          const ordersResponse = await fetch('/api/auth/orders', {
+          console.log('[Account] Fetching orders from /api/account/orders');
+          const ordersResponse = await fetch('/api/account/orders', {
             signal: controller.signal,
           });
+
+          console.log('[Account] Orders response status:', ordersResponse.status);
+
           const ordersData = await ordersResponse.json();
+
+          console.log('[Account] Orders data retrieved:', {
+            orderCount: ordersData.orders?.length || 0,
+            hasOrders: !!ordersData.orders,
+            ordersLength: ordersData.orders?.length,
+          });
 
           clearTimeout(timeoutId);
 
           if (ordersData.orders) {
             setOrders(ordersData.orders);
+            console.log('[Account] ✅ Successfully set', ordersData.orders.length, 'orders');
+          } else {
+            console.log('[Account] ⚠️  ordersData.orders is falsy:', ordersData);
           }
         } catch (err) {
           clearTimeout(timeoutId);
@@ -154,10 +181,10 @@ export default function AccountPage() {
         }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
-          console.error('[Account] Request timeout');
+          console.error('[Account] ❌ Request timeout');
           setError('Request timeout. Please refresh the page or try again.');
         } else {
-          console.error('[Account] Error fetching data:', err);
+          console.error('[Account] ❌ Error fetching data:', err);
           setError('Unable to load account data. Please try again.');
         }
       } finally {
@@ -223,8 +250,8 @@ export default function AccountPage() {
           {orders.length === 0 ? (
             // Empty State
             <div className="bg-cream-100 border border-border rounded-lg p-8 text-center">
-              <p className="text-muted-foreground mb-4">You haven't placed any orders yet.</p>
-              <p className="text-sm text-muted-foreground mb-6">Explore our collection and create your first order.</p>
+              <p className="text-muted-foreground mb-4">No orders found.</p>
+              <p className="text-sm text-muted-foreground mb-6">You haven't placed any orders yet, or your order history is not available. Check the browser console for debugging details.</p>
               <Link href="/collections" className="inline-block text-sm text-brand-900 font-medium hover:text-brand-700 transition-colors underline">
                 Browse Collections →
               </Link>
@@ -235,6 +262,8 @@ export default function AccountPage() {
               {orders.map((order) => {
                 const financialStatus = getStatusColor(order.financialStatus, 'financial');
                 const fulfillmentStatus = getStatusColor(order.fulfillmentStatus, 'fulfillment');
+                const hasLineItems = order.lineItems && order.lineItems.length > 0;
+                const hasStatusUrl = order.statusUrl && order.statusUrl.trim().length > 0;
 
                 return (
                   <div key={order.id} className="bg-white border border-border rounded-lg p-6 md:p-8 hover:shadow-md transition-shadow">
@@ -242,12 +271,12 @@ export default function AccountPage() {
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 pb-6 border-b border-border">
                       <div>
                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Order Number</p>
-                        <p className="text-xl font-serif text-brand-900">#{order.number}</p>
+                        <p className="text-xl font-serif text-brand-900">{order.name}</p>
                         <p className="text-sm text-muted-foreground mt-2">{formatDate(order.processedAt)}</p>
                       </div>
                       <div className="mt-4 md:mt-0 text-right">
                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Total</p>
-                        <p className="text-xl font-serif text-brand-900">{formatCurrency(order.totalPrice.amount, order.totalPrice.currencyCode)}</p>
+                        <p className="text-xl font-serif text-brand-900">{formatCurrency(order.totalPrice?.amount, order.totalPrice?.currencyCode)}</p>
                       </div>
                     </div>
 
@@ -257,48 +286,50 @@ export default function AccountPage() {
                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Payment Status</p>
                         <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${financialStatus.bg} ${financialStatus.text}`}>
                           <span className={`w-2 h-2 rounded-full ${financialStatus.dot}`} />
-                          {order.financialStatus}
+                          {order.financialStatus ?? 'Unknown'}
                         </div>
                       </div>
                       <div>
                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Fulfillment Status</p>
                         <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${fulfillmentStatus.bg} ${fulfillmentStatus.text}`}>
                           <span className={`w-2 h-2 rounded-full ${fulfillmentStatus.dot}`} />
-                          {order.fulfillmentStatus}
+                          {order.fulfillmentStatus ?? 'Unknown'}
                         </div>
                       </div>
                     </div>
 
                     {/* Line Items */}
-                    {order.lineItems.length > 0 && (
+                    {hasLineItems && (
                       <div className="mb-6 pb-6 border-b border-border">
                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Items</p>
                         <div className="space-y-2">
-                          {order.lineItems.slice(0, 3).map((item, idx) => (
+                          {order.lineItems!.slice(0, 3).map((item, idx) => (
                             <div key={idx} className="flex justify-between text-sm">
                               <span className="text-brand-900">{item.title}</span>
                               <span className="text-muted-foreground">Qty: {item.quantity}</span>
                             </div>
                           ))}
-                          {order.lineItems.length > 3 && (
-                            <p className="text-sm text-muted-foreground mt-2">+{order.lineItems.length - 3} more items</p>
+                          {order.lineItems!.length > 3 && (
+                            <p className="text-sm text-muted-foreground mt-2">+{order.lineItems!.length - 3} more items</p>
                           )}
                         </div>
                       </div>
                     )}
 
                     {/* Track Order Button */}
-                    <div className="flex justify-end">
-                      <a
-                        href={order.statusUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center text-sm font-medium text-brand-900 hover:text-brand-700 transition-colors group"
-                      >
-                        Track Order
-                        <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
-                      </a>
-                    </div>
+                    {hasStatusUrl && (
+                      <div className="flex justify-end">
+                        <a
+                          href={order.statusUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-sm font-medium text-brand-900 hover:text-brand-700 transition-colors group"
+                        >
+                          Track Order
+                          <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
+                        </a>
+                      </div>
+                    )}
                   </div>
                 );
               })}
