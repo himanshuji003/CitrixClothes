@@ -60,17 +60,25 @@ export async function GET(req: NextRequest): Promise<NextResponse<OrdersResponse
 
     // If no token, user is not authenticated - return empty orders
     if (!token) {
-      console.log('[/api/auth/orders] No token found - returning empty orders');
+      console.log('[/api/auth/orders] User not authenticated - no token found', {
+        timestamp: new Date().toISOString(),
+      });
       return NextResponse.json({ orders: [] });
     }
 
-    console.log('[/api/auth/orders] Token found, querying Shopify API');
+    console.log('[/api/auth/orders] Fetching customer orders', {
+      tokenLength: token.length,
+      timestamp: new Date().toISOString(),
+    });
 
     // Step 2: Validate Shopify configuration
     const shopId = process.env.SHOPIFY_SHOP_ID;
 
     if (!shopId) {
-      console.error('[/api/auth/orders] Missing SHOPIFY_SHOP_ID environment variable');
+      console.error('[/api/auth/orders] Shopify API configuration error', {
+        errorCode: 'MISSING_SHOP_ID',
+        timestamp: new Date().toISOString(),
+      });
       return NextResponse.json({ orders: [], error: 'Server configuration error' });
     }
 
@@ -102,15 +110,18 @@ export async function GET(req: NextRequest): Promise<NextResponse<OrdersResponse
       }
     `;
 
-    console.log('[/api/auth/orders] Sending GraphQL query to Shopify');
+    console.log('[/api/auth/orders] Querying Shopify Customer Account API', {
+      endpoint: `https://shopify.com/authentication/${shopId}/account/customer/api/2024-01/graphql`,
+      timestamp: new Date().toISOString(),
+    });
 
     // Step 4: Make request to Shopify Customer Account API
     const shopifyResponse = await fetch(
-      `https://shopify.com/${shopId}/account/customer/api/2024-01/graphql`,
+      `https://shopify.com/authentication/${shopId}/account/customer/api/2024-01/graphql`,
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ query: graphqlQuery }),
@@ -118,28 +129,45 @@ export async function GET(req: NextRequest): Promise<NextResponse<OrdersResponse
     );
 
     // Step 5: Parse response
-    const responseData = await shopifyResponse.json();
+    let responseData;
+    
+    try {
+      responseData = await shopifyResponse.json();
+    } catch (parseError) {
+      console.error('[/api/auth/orders] Failed to parse Shopify API response', {
+        status: shopifyResponse.status,
+        error: parseError instanceof Error ? parseError.message : String(parseError),
+        timestamp: new Date().toISOString(),
+      });
+      return NextResponse.json({ orders: [] });
+    }
 
-    console.log('[/api/auth/orders] Shopify API response status:', shopifyResponse.status);
+    console.log('[/api/auth/orders] Shopify API response received', {
+      status: shopifyResponse.status,
+      hasErrors: !!responseData.errors,
+      hasData: !!responseData.data,
+      timestamp: new Date().toISOString(),
+    });
 
     // Check for HTTP errors
     if (!shopifyResponse.ok) {
       console.error('[/api/auth/orders] Shopify API error', {
+        errorCode: shopifyResponse.status === 401 ? 'UNAUTHORIZED' : 'API_ERROR',
         status: shopifyResponse.status,
+        statusText: shopifyResponse.statusText,
         errors: responseData.errors,
+        timestamp: new Date().toISOString(),
       });
-
-      // 401 means token is invalid/expired
-      if (shopifyResponse.status === 401) {
-        console.log('[/api/auth/orders] Token was invalid, returning empty orders');
-      }
 
       return NextResponse.json({ orders: [] });
     }
 
     // Check for GraphQL errors
     if (responseData.errors) {
-      console.error('[/api/auth/orders] GraphQL errors:', responseData.errors);
+      console.error('[/api/auth/orders] GraphQL errors in response', {
+        errors: responseData.errors,
+        timestamp: new Date().toISOString(),
+      });
       return NextResponse.json({ orders: [] });
     }
 
@@ -166,6 +194,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<OrdersResponse
 
     console.log('[/api/auth/orders] Orders retrieved successfully', {
       count: normalizedOrders.length,
+      timestamp: new Date().toISOString(),
     });
 
     // Step 6: Return orders data

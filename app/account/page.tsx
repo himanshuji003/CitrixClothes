@@ -113,9 +113,18 @@ export default function AccountPage() {
         try {
           // Fetch user data
           console.log('[Account] Fetching user data');
-          const userResponse = await fetch('/api/auth/me', {
+          const userResponse = await fetch('/api/account/me', {
             signal: controller.signal,
           });
+
+          if (userResponse.status === 401) {
+            // Token invalid or expired, redirect to login
+            console.log('[Account] Unauthorized response (401) - redirecting to login');
+            clearTimeout(timeoutId);
+            router.push('/login');
+            return;
+          }
+
           const userData = await userResponse.json();
 
           if (!userData.user) {

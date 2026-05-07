@@ -8,13 +8,23 @@ import { WishlistProvider } from '@/lib/wishlist-context';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import CartDrawer from '@/components/cart/CartDrawer';
-import { Analytics } from "@vercel/analytics/next"
-import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair', display: 'swap' });
 
-const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://citrix-clothes.vercel.app';
+const DEFAULT_SITE_URL = 'http://localhost:3000';
+
+function getSafeSiteUrl(value?: string) {
+  const candidate = value?.trim() || DEFAULT_SITE_URL;
+
+  try {
+    return new URL(candidate).toString();
+  } catch {
+    return DEFAULT_SITE_URL;
+  }
+}
+
+const SITE_URL = getSafeSiteUrl(process.env.NEXT_PUBLIC_BASE_URL);
 const OG_IMAGE = 'https://images.unsplash.com/photo-1571908599407-cdb918ed83bf?auto=format&fit=crop&w=1200&q=85';
 
 export const metadata: Metadata = {
@@ -41,7 +51,12 @@ export const metadata: Metadata = {
   },
   icons: { icon: '/favicon.ico' },
   robots: { index: true, follow: true },
-  viewport: { width: 'device-width', initialScale: 1, maximumScale: 5 },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

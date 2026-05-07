@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { AuthErrorAlert } from '@/components/AuthErrorAlert';
 import { LoadingBar } from '@/components/LoadingBar';
-import { getShopifyLoginUrl } from '@/lib/shopify-auth';
 import { Loader2 } from 'lucide-react';
 
 /**
@@ -30,42 +29,36 @@ export default function LoginPage() {
 
   /**
    * Handle login button click
-   * Generates OAuth URL with PKCE, stores code_verifier, then redirects to Shopify
+   * Redirects to /api/auth/login server-side route which handles:
+   * 1. PKCE generation
+   * 2. State and nonce generation
+   * 3. Secure cookie storage
+   * 4. Redirect to Shopify OAuth endpoint
    */
   const handleLogin = async () => {
+    console.log("LOGIN CLICKED");
     setIsLoading(true);
     setError(null);
 
     try {
-      // Step 1: Get authorization URL and PKCE parameters from server
-      const { loginUrl, codeVerifier } = await getShopifyLoginUrl();
+      console.log('[Login Page] Starting OAuth login flow via /api/auth/login');
 
-      console.log('[Login Page] Got PKCE parameters from server', {
-        hasLoginUrl: !!loginUrl,
-        hasCodeVerifier: !!codeVerifier,
-        timestamp: new Date().toISOString(),
-      });
-
-      // Step 2: Store code_verifier in secure cookie via API
-      // This endpoint creates a secure httpOnly cookie with the code_verifier
-      const storeResponse = await fetch('/api/auth/store-pkce', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codeVerifier }),
-      });
-
-      if (!storeResponse.ok) {
-        throw new Error('Failed to store PKCE verifier');
-      }
-
-      console.log('[Login Page] PKCE verifier stored in secure cookie, redirecting to Shopify OAuth');
-
-      // Step 3: Redirect to Shopify's hosted auth page
-      // User will authorize, then Shopify redirects back to /api/auth/callback
-      window.location.href = loginUrl;
+      // Redirect to server-side login route
+      // The /api/auth/login route will:
+      // 1. Generate PKCE parameters
+      // 2. Generate state and nonce
+      // 3. Store them in secure cookies
+      // 4. Redirect to Shopify authorization endpoint
+      window.location.href = '/api/auth/login';
+      console.log('[Login Page] Redirected to /api/auth/login');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to initiate login';
-      console.error('[Login Page] Error:', message);
+      console.error('[Login Page] Login failed with error:', {
+        error: message,
+        errorType: err instanceof Error ? err.constructor.name : typeof err,
+        fullError: err,
+        timestamp: new Date().toISOString(),
+      });
       setError(message);
       setIsLoading(false);
     }
@@ -93,7 +86,7 @@ export default function LoginPage() {
         <div className="bg-white rounded-lg border border-border p-6 md:p-8">
           {/* Info Text */}
           <p className="text-sm text-muted-foreground mb-6">
-            ✅ OAuth Authentication — Secure login via Shopify Customer Account API.
+             OAuth Authentication — Secure login via Shopify Customer Account API.
             <br />
             <span className="text-xs mt-2 inline-block">
               Your login credentials are never stored on our servers.

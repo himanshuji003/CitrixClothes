@@ -62,13 +62,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
       try {
-        const response = await fetch('/api/auth/me', {
+        const response = await fetch('/api/account/me', {
           method: 'GET',
           credentials: 'include', // ⚠️ Important: Send cookies with request
           signal: controller.signal,
         });
 
         clearTimeout(timeoutId);
+
+        if (response.status === 401) {
+          console.log('[AuthContext] Unauthorized (401) - user not authenticated');
+          setUser(null);
+          return;
+        }
 
         if (!response.ok) {
           throw new Error(`Failed to fetch user: ${response.statusText}`);

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { fetchCustomerAccountApiMetadata } from '@/lib/shopify-auth';
 
 /**
  * ✅ PHASE 3+: Fetch Current User Data
  * 
  * This endpoint retrieves the authenticated user's profile information
- * from Shopify Customer Account API.
+ * from Shopify Customer Account API using OpenID Discovery for endpoints.
  * 
  * Security:
  * - Token is read from httpOnly cookie (server-side only)
@@ -13,10 +14,11 @@ import { cookies } from 'next/headers';
  * - Called by AuthContext on app mount
  * 
  * Flow:
- * 1. Check if customer_token cookie exists
- * 2. If exists, query Shopify Customer Account API
- * 3. Return user data (firstName, lastName, email)
- * 4. If no token or invalid, return { user: null }
+ * 1. Check if shopify_customer_access_token cookie exists
+ * 2. Discover Customer Account API GraphQL endpoint
+ * 3. Query Shopify Customer Account API with token
+ * 4. Return user data (firstName, lastName, email)
+ * 5. If no token or invalid, return { user: null }
  * 
  * Reference: https://shopify.dev/docs/api/customer-account/latest
  */
@@ -40,22 +42,44 @@ export async function GET(req: NextRequest): Promise<NextResponse<MeResponse>> {
 
     // Step 1: Get token from httpOnly cookie (server-side only)
     const cookieStore = await cookies();
-    const token = cookieStore.get('customer_token')?.value;
+    const token = cookieStore.get('shopify_customer_access_token')?.value;
 
     // If no token, user is not authenticated
     if (!token) {
-      console.log('[/api/auth/me] No token found - user not authenticated');
+      console.log('[/api/auth/me] User not authenticated - no token found', {
+        timestamp: new Date().toISOString(),
+      });
       return NextResponse.json({ user: null });
     }
 
-    console.log('[/api/auth/me] Token found, querying Shopify API');
+    console.log('[/api/auth/me] Fetching authenticated user data', {
+      tokenLength: token.length,
+      timestamp: new Date().toISOString(),
+    });
 
-    // Step 2: Validate Shopify configuration
-    const shopId = process.env.SHOPIFY_SHOP_ID;
+    // Step 2: Discover Customer Account API GraphQL endpoint
+    let graphqlUrl: string;
+    
+    try {
+      const apiMetadata = await fetchCustomerAccountApiMetadata();
+      graphqlUrl = apiMetadata.graphql_url || apiMetadata.graphql_api;
+      
+      if (!graphqlUrl) {
+        throw new Error('No GraphQL endpoint in metadata');
+      }
 
-    if (!shopId) {
-      console.error('[/api/auth/me] Missing SHOPIFY_SHOP_ID environment variable');
-      return NextResponse.json({ user: null, error: 'Server configuration error' });
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[/api/auth/me] Customer Account API discovered:', {
+          graphqlUrl: graphqlUrl,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    } catch (discoveryError) {
+      console.error('[/api/auth/me] Failed to discover Customer Account API endpoint', {
+        error: discoveryError instanceof Error ? discoveryError.message : String(discoveryError),
+        timestamp: new Date().toISOString(),
+      });
+      return NextResponse.json({ user: null, error: 'Failed to discover API endpoint' });
     }
 
     // Step 3: GraphQL Query to fetch customer data
@@ -69,38 +93,82 @@ export async function GET(req: NextRequest): Promise<NextResponse<MeResponse>> {
       }
     `;
 
-    console.log('[/api/auth/me] Sending GraphQL query to Shopify');
+    // ✅ Validate token format before using it
+    // Customer Account API requires tokens starting with shcat_
+    if (!token.startsWith('shcat_')) {
+      console.error('[/api/auth/me] Invalid token format - wrong token type used', {
+        errorCode: 'INVALID_TOKEN_FORMAT',
+        tokenPrefix: token.slice(0, 8),
+        expectedPrefix: 'shcat_',
+        timestamp: new Date().toISOString(),
+      });
+      return NextResponse.json(
+        { 
+          user: null,
+          error: 'Invalid token format for Customer Account API (requires shcat_ prefix)' 
+        },
+        { status: 401 }
+      );
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[/api/auth/me] ✅ Token format valid - sending GraphQL query to Customer Account API', {
+        tokenPrefix: token.slice(0, 6),
+        endpoint: graphqlUrl,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     // Step 4: Make request to Shopify Customer Account API
-    const shopifyResponse = await fetch(
-      `https://shopify.com/${shopId}/account/customer/api/2024-01/graphql`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query: graphqlQuery }),
-      }
-    );
+    // ✅ Authorization header: plain token (not "Bearer {token}")
+    // Shopify Customer Account API expects Authorization: {token}
+    const shopifyResponse = await fetch(graphqlUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': token,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query: graphqlQuery }),
+    });
 
     // Step 5: Parse response
-    const responseData = await shopifyResponse.json();
+    let responseData;
+    
+    try {
+      responseData = await shopifyResponse.json();
+    } catch (parseError) {
+      console.error('[/api/auth/me] Failed to parse Shopify API response', {
+        status: shopifyResponse.status,
+        error: parseError instanceof Error ? parseError.message : String(parseError),
+        timestamp: new Date().toISOString(),
+      });
+      return NextResponse.json({ user: null, error: 'Invalid API response' });
+    }
 
-    console.log('[/api/auth/me] Shopify API response status:', shopifyResponse.status);
+    console.log('[/api/auth/me] Shopify API response received', {
+      status: shopifyResponse.status,
+      hasErrors: !!responseData.errors,
+      hasData: !!responseData.data,
+      timestamp: new Date().toISOString(),
+    });
 
-    // Check for errors
+    // Check for HTTP errors
     if (!shopifyResponse.ok) {
       console.error('[/api/auth/me] Shopify API error', {
+        errorCode: shopifyResponse.status === 401 ? 'UNAUTHORIZED' : 'API_ERROR',
         status: shopifyResponse.status,
+        statusText: shopifyResponse.statusText,
         errors: responseData.errors,
+        timestamp: new Date().toISOString(),
       });
 
       // 401 means token is invalid/expired
       if (shopifyResponse.status === 401) {
         // Clear the invalid cookie
-        cookieStore.delete('customer_token');
-        console.log('[/api/auth/me] Token was invalid, clearing cookie');
+        cookieStore.delete('shopify_customer_access_token');
+        console.log('[/api/auth/me] Token invalid (401) - clearing cookie', {
+          timestamp: new Date().toISOString(),
+        });
       }
 
       return NextResponse.json({ user: null });
@@ -108,7 +176,10 @@ export async function GET(req: NextRequest): Promise<NextResponse<MeResponse>> {
 
     // Check for GraphQL errors
     if (responseData.errors) {
-      console.error('[/api/auth/me] GraphQL errors:', responseData.errors);
+      console.error('[/api/auth/me] GraphQL errors in response', {
+        errors: responseData.errors,
+        timestamp: new Date().toISOString(),
+      });
       return NextResponse.json({ user: null });
     }
 
@@ -116,9 +187,19 @@ export async function GET(req: NextRequest): Promise<NextResponse<MeResponse>> {
     const customer = responseData.data?.customer;
 
     if (!customer) {
-      console.warn('[/api/auth/me] No customer data in response');
+      console.warn('[/api/auth/me] No customer data in response', {
+        hasData: !!responseData.data,
+        timestamp: new Date().toISOString(),
+      });
       return NextResponse.json({ user: null });
     }
+
+    console.log('[/api/auth/me] Customer data retrieved successfully', {
+      hasEmail: !!customer.email,
+      hasFirstName: !!customer.firstName,
+      hasLastName: !!customer.lastName,
+      timestamp: new Date().toISOString(),
+    });
 
     console.log('[/api/auth/me] User data retrieved successfully', {
       email: customer.email,

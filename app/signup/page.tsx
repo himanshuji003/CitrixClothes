@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { AuthErrorAlert } from '@/components/AuthErrorAlert';
 import { LoadingBar } from '@/components/LoadingBar';
-import { getShopifyLoginUrl } from '@/lib/shopify-auth';
 import { Loader2 } from 'lucide-react';
 
 /**
@@ -30,42 +29,35 @@ export default function SignupPage() {
 
   /**
    * Handle signup button click
-   * Generates OAuth URL with PKCE, stores code_verifier, then redirects to Shopify
+   * Redirects to /api/auth/login server-side route which handles:
+   * 1. PKCE generation
+   * 2. State and nonce generation
+   * 3. Secure cookie storage
+   * 4. Redirect to Shopify OAuth endpoint
+   * 
+   * Note: Shopify handles both signup and login via the same OAuth endpoint.
+   * If user doesn't exist, Shopify will create account automatically.
    */
   const handleSignup = async () => {
+    console.log("SIGNUP CLICKED");
     setIsLoading(true);
     setError(null);
 
     try {
-      // Step 1: Get authorization URL and PKCE parameters
-      // Note: Shopify handles both signup and login via the same OAuth endpoint
-      const { loginUrl, codeVerifier } = await getShopifyLoginUrl();
+      console.log('[Signup Page] Starting OAuth signup flow via /api/auth/login');
 
-      console.log('[Signup Page] Got PKCE parameters from server', {
-        hasLoginUrl: !!loginUrl,
-        hasCodeVerifier: !!codeVerifier,
-        timestamp: new Date().toISOString(),
-      });
-
-      // Step 2: Store code_verifier in secure cookie
-      const storeResponse = await fetch('/api/auth/store-pkce', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codeVerifier }),
-      });
-
-      if (!storeResponse.ok) {
-        throw new Error('Failed to store PKCE verifier');
-      }
-
-      console.log('[Signup Page] PKCE verifier stored, redirecting to Shopify OAuth');
-
-      // Step 3: Redirect user to Shopify's hosted auth page
-      // Shopify handles signup automatically if user is new
-      window.location.href = loginUrl;
+      // Redirect to server-side login route
+      // Shopify will automatically create account if user is new
+      window.location.href = '/api/auth/login';
+      console.log('[Signup Page] Redirected to /api/auth/login');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to initiate signup';
-      console.error('[Signup Page] Error:', message);
+      console.error('[Signup Page] Signup failed with error:', {
+        error: message,
+        errorType: err instanceof Error ? err.constructor.name : typeof err,
+        fullError: err,
+        timestamp: new Date().toISOString(),
+      });
       setError(message);
       setIsLoading(false);
     }
