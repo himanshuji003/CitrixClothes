@@ -226,6 +226,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<OrdersResponse
       return NextResponse.json(
         {
           success: false,
+          orders: [],
           error: 'SHOPIFY_API_ERROR',
           details: result.errors,
         },
@@ -245,6 +246,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<OrdersResponse
       return NextResponse.json(
         {
           success: false,
+          orders: [],
           error: 'SHOPIFY_GRAPHQL_ERROR',
           details: result.errors,
         },
@@ -263,6 +265,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<OrdersResponse
       return NextResponse.json(
         {
           success: false,
+          orders: [],
           error: 'NO_CUSTOMER_DATA',
           details: 'Customer data not found in Shopify response',
         },
@@ -301,7 +304,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<OrdersResponse
 
     console.log('[/api/account/orders] ✅ SUCCESS: Orders retrieved and normalized', {
       count: orders.length,
-      orderIds: orders.map(o => o.id).join(', '),
+      orderIds: orders.map((o: Order) => o.id).join(', '),
       timestamp: new Date().toISOString(),
     });
 
@@ -338,6 +341,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<OrdersResponse
     return NextResponse.json(
       {
         success: false,
+        orders: [],
         error: 'INTERNAL_SERVER_ERROR',
         details: error instanceof Error ? error.message : String(error),
       },

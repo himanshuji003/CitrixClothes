@@ -263,7 +263,6 @@ export default function AccountPage() {
                 const financialStatus = getStatusColor(order.financialStatus, 'financial');
                 const fulfillmentStatus = getStatusColor(order.fulfillmentStatus, 'fulfillment');
                 const hasLineItems = order.lineItems && order.lineItems.length > 0;
-                const hasStatusUrl = order.statusUrl && order.statusUrl.trim().length > 0;
 
                 return (
                   <div key={order.id} className="bg-white border border-border rounded-lg p-6 md:p-8 hover:shadow-md transition-shadow">
@@ -317,7 +316,7 @@ export default function AccountPage() {
                     )}
 
                     {/* Track Order Button */}
-                    {hasStatusUrl && (
+                    {order.statusUrl ? (
                       <div className="flex justify-end">
                         <a
                           href={order.statusUrl}
@@ -329,7 +328,7 @@ export default function AccountPage() {
                           <span className="ml-2 group-hover:translate-x-1 transition-transform">→</span>
                         </a>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 );
               })}
