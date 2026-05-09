@@ -151,14 +151,14 @@ export default function FAQsPage() {
             <div>
               <p className="mb-2 text-sm text-muted-foreground">Email us:</p>
               <p className="font-serif text-brand-700 transition-colors duration-200 hover:text-brand-900">
-                support@suitique.com
+                support@suitiquedesign.com
               </p>
             </div>
 
             <div>
               <p className="mb-2 text-sm text-muted-foreground">Call us:</p>
               <p className="font-serif text-brand-700 transition-colors duration-200 hover:text-brand-900">
-                +91 (0) 11-XXXX-XXXX
+                +91 98118 38318
               </p>
             </div>
           </div>

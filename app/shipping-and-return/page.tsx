@@ -171,7 +171,7 @@ export default function ShippingAndReturnPage() {
               <ol className="space-y-3 text-sm text-muted-foreground">
                 <li className="flex gap-3">
                   <span className="text-brand-700 font-serif">1.</span>
-                  <span>Email support@suitique.com with your order number</span>
+                  <span>Email support@suitiquedesign.com with your order number</span>
                 </li>
                 <li className="flex gap-3">
                   <span className="text-brand-700 font-serif">2.</span>
@@ -217,7 +217,7 @@ export default function ShippingAndReturnPage() {
             If you receive a defective or damaged item, contact us immediately within 14 days of delivery. We'll provide a replacement or full refund at no cost to you.
           </p>
           <p className="text-sm text-muted-foreground">
-            <strong className="text-brand-900">What to do:</strong> Email clear photos of the defect to support@suitique.com with your order number.
+            <strong className="text-brand-900">What to do:</strong> Email clear photos of the defect to support@suitiquedesign.com with your order number.
           </p>
         </section>
 
@@ -228,7 +228,7 @@ export default function ShippingAndReturnPage() {
             For international orders, return shipping costs are your responsibility unless the item is defective. However, we provide a prepaid return label for the first return.
           </p>
           <p className="text-sm text-muted-foreground">
-            Please contact support@suitique.com for specific return instructions for your country.
+            Please contact support@suitiquedesign.com for specific return instructions for your country.
           </p>
         </section>
 
@@ -242,7 +242,7 @@ export default function ShippingAndReturnPage() {
                 <span className="text-2xl">+</span>
               </summary>
               <p className="mt-3 text-sm text-muted-foreground">
-                Yes, if your order hasn't been shipped yet. Contact support@suitique.com immediately with your order number and new address.
+                Yes, if your order hasn't been shipped yet. Contact support@suitiquedesign.com immediately with your order number and new address.
               </p>
             </details>
 
@@ -252,7 +252,7 @@ export default function ShippingAndReturnPage() {
                 <span className="text-2xl">+</span>
               </summary>
               <p className="mt-3 text-sm text-muted-foreground">
-                All shipments are insured. Report any damage or loss immediately to support@suitique.com with photos. We'll file a claim and send a replacement at no cost.
+                All shipments are insured. Report any damage or loss immediately to support@suitiquedesign.com with photos. We'll file a claim and send a replacement at no cost.
               </p>
             </details>
 
@@ -285,8 +285,8 @@ export default function ShippingAndReturnPage() {
             Our customer care team is ready to assist with any shipping or return questions.
           </p>
           <p className="text-muted-foreground">
-            Email: <span className="text-brand-700">support@suitique.com</span><br />
-            Phone: <span className="text-brand-700">+91 (0) 11-XXXX-XXXX</span><br />
+            Email: <span className="text-brand-700">support@suitiquedesign.com</span><br />
+            Phone: <span className="text-brand-700">+91 98118 38318</span><br />
             Hours: Monday - Saturday, 10 AM - 6 PM IST
           </p>
         </section>

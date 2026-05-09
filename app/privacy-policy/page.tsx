@@ -193,8 +193,8 @@ export default function PrivacyPolicyPage() {
             If you have questions about this Privacy Policy or how we handle your data, please contact us:
           </p>
           <p className="text-muted-foreground">
-            Email: <span className="text-brand-700">privacy@suitique.com</span><br />
-            Phone: <span className="text-brand-700">+91 (0) 11-XXXX-XXXX</span>
+            Email: <span className="text-brand-700">privacy@suitiquedesign.com</span><br />
+            Phone: <span className="text-brand-700">+91 98118 38318</span>
           </p>
         </section>
 

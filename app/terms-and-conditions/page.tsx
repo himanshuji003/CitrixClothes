@@ -211,8 +211,8 @@ export default function TermsAndConditionsPage() {
             If you have questions about these Terms and Conditions, please contact us:
           </p>
           <p className="text-muted-foreground text-sm">
-            Email: <span className="text-brand-700">legal@suitique.com</span><br />
-            Phone: <span className="text-brand-700">+91 (0) 11-XXXX-XXXX</span>
+            Email: <span className="text-brand-700">legal@suitiquedesign.com</span><br />
+            Phone: <span className="text-brand-700">+91 98118 38318</span>
           </p>
         </section>
 

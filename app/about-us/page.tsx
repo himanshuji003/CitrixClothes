@@ -118,8 +118,8 @@ export default function AboutUsPage() {
             We'd love to hear from you. Have questions about our collections, need styling advice, or want to collaborate? Get in touch with our team.
           </p>
           <p className="text-muted-foreground">
-            Email: <span className="text-brand-700">hello@suitique.com</span><br />
-            Phone: <span className="text-brand-700">+91 (0) 11-XXXX-XXXX</span>
+            Email: <span className="text-brand-700">hello@suitiquedesign.com</span><br />
+            Phone: <span className="text-brand-700">+91 98118 38318</span>
           </p>
         </section>
 

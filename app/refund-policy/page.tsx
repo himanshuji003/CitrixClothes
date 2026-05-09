@@ -74,7 +74,7 @@ export default function RefundPolicyPage() {
           <ol className="space-y-3 text-muted-foreground">
             <li className="flex gap-3">
               <span className="text-brand-700 font-serif">1.</span>
-              <span>Contact our customer service team at support@suitique.com with your order number</span>
+              <span>Contact our customer service team at support@suitiquedesign.com with your order number</span>
             </li>
             <li className="flex gap-3">
               <span className="text-brand-700 font-serif">2.</span>
@@ -137,8 +137,8 @@ export default function RefundPolicyPage() {
             If you have any questions about our refund policy, please don't hesitate to reach out to our customer care team.
           </p>
           <p className="text-muted-foreground">
-            Email: <span className="text-brand-700">support@suitique.com</span><br />
-            Phone: <span className="text-brand-700">+91 (0) 11-XXXX-XXXX</span>
+            Email: <span className="text-brand-700">support@suitiquedesign.com</span><br />
+            Phone: <span className="text-brand-700">+91 98118 38318</span>
           </p>
         </section>
 

@@ -33,7 +33,7 @@ export default function ContactUsPage() {
             <h3 className="font-serif text-2xl text-brand-900 mb-3">Email</h3>
             <p className="text-muted-foreground text-sm mb-4">For general inquiries and customer support:</p>
             <p className="font-serif text-lg text-brand-700 hover:text-brand-900 transition-colors duration-200 cursor-pointer">
-              support@suitique.com
+              support@suitiquedesign.com
             </p>
             <p className="text-muted-foreground text-xs mt-3">Response time: 24-48 hours</p>
           </div>
@@ -43,7 +43,7 @@ export default function ContactUsPage() {
             <h3 className="font-serif text-2xl text-brand-900 mb-3">Phone</h3>
             <p className="text-muted-foreground text-sm mb-4">Call our customer care team:</p>
             <p className="font-serif text-lg text-brand-700 hover:text-brand-900 transition-colors duration-200 cursor-pointer">
-              +91 (0) 11-XXXX-XXXX
+              +91 98118 38318
             </p>
             <p className="text-muted-foreground text-xs mt-3">Monday - Saturday, 10 AM - 6 PM IST</p>
           </div>
@@ -56,22 +56,22 @@ export default function ContactUsPage() {
             <div className="bg-cream-50 p-6 rounded-lg border border-border">
               <h3 className="font-serif text-brand-900 font-semibold mb-2">Customer Service</h3>
               <p className="text-sm text-muted-foreground mb-2">Orders, refunds, shipping inquiries</p>
-              <p className="text-brand-700 font-serif">care@suitique.com</p>
+              <p className="text-brand-700 font-serif">care@suitiquedesign.com</p>
             </div>
             <div className="bg-cream-50 p-6 rounded-lg border border-border">
               <h3 className="font-serif text-brand-900 font-semibold mb-2">Styling & Consultation</h3>
               <p className="text-sm text-muted-foreground mb-2">Personal styling and bespoke orders</p>
-              <p className="text-brand-700 font-serif">styling@suitique.com</p>
+              <p className="text-brand-700 font-serif">styling@suitiquedesign.com</p>
             </div>
             <div className="bg-cream-50 p-6 rounded-lg border border-border">
               <h3 className="font-serif text-brand-900 font-semibold mb-2">Partnerships & Wholesale</h3>
               <p className="text-sm text-muted-foreground mb-2">B2B inquiries and collaborations</p>
-              <p className="text-brand-700 font-serif">wholesale@suitique.com</p>
+              <p className="text-brand-700 font-serif">wholesale@suitiquedesign.com</p>
             </div>
             <div className="bg-cream-50 p-6 rounded-lg border border-border">
               <h3 className="font-serif text-brand-900 font-semibold mb-2">Press & Media</h3>
               <p className="text-sm text-muted-foreground mb-2">Press releases and media inquiries</p>
-              <p className="text-brand-700 font-serif">press@suitique.com</p>
+              <p className="text-brand-700 font-serif">press@suitiquedesign.com</p>
             </div>
           </div>
         </section>
