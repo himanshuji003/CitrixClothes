@@ -1,10 +1,13 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export const metadata: Metadata = {
   title: 'About Us | Suitique Designs',
   description: 'Discover the story behind Suitique Designs and our commitment to handcrafted ethnic couture.',
 };
+
+const LOGO_URL = 'https://customer-assets.emergentagent.com/job_refined-retail-1/artifacts/7sv48thr_image.png';
 
 export default function AboutUsPage() {
   return (
@@ -19,6 +22,18 @@ export default function AboutUsPage() {
       </div>
 
       <div className="container max-w-4xl px-4 md:px-8 py-12 md:py-16">
+        {/* Logo */}
+        <div className="flex justify-center mb-12">
+          <Image
+            src={LOGO_URL}
+            alt="Suitique Designs Logo"
+            width={150}
+            height={150}
+            className="object-contain"
+            priority
+          />
+        </div>
+
         {/* Our Story */}
         <section className="mb-12">
           <h2 className="font-serif text-2xl text-brand-900 mb-4">Our Story</h2>

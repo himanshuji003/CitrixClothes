@@ -47,6 +47,13 @@ export default function Footer() {
           <span className="tracking-[0.2em] uppercase">Made with care · India</span>
         </div>
       </div>
+      <div className="border-t border-border/50">
+        <div className="container py-4 flex justify-center">
+          <p className="text-xs text-muted-foreground">
+            Built with <span className="text-brand-700">❤</span> by <Link href="https://himanshuji003.me/" target="_blank" rel="noopener noreferrer" className="text-brand-700 font-serif hover:underline transition-colors duration-200">Himanshu</Link>
+          </p>
+        </div>
+      </div>
     </footer>
   );
 }
