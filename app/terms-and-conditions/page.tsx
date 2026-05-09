@@ -212,7 +212,9 @@ export default function TermsAndConditionsPage() {
           </p>
           <p className="text-muted-foreground text-sm">
             Email: <span className="text-brand-700">legal@suitiquedesign.com</span><br />
-            Phone: <span className="text-brand-700">+91 98118 38318</span>
+            Phone: <span className="text-brand-700">+91 98118 38318
+              
+            </span>
           </p>
         </section>
 
