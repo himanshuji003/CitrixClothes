@@ -43,6 +43,57 @@ let customerAccountApiCache: any = null;
 let cacheTimestamp: number = 0;
 const CACHE_TTL = 3600000; // 1 hour
 
+export const AUTH_COOKIE_NAMES = {
+  accessToken: 'shopify_customer_access_token',
+  refreshToken: 'shopify_customer_refresh_token',
+  idToken: 'shopify_customer_id_token',
+  pkceVerifier: 'pkce_verifier',
+  oauthState: 'oauth_state',
+  oauthNonce: 'oauth_nonce',
+  legacyCustomerToken: 'customer_token',
+} as const;
+
+export function getRequestBaseUrl(req: Request): string {
+  const forwardedHost = req.headers.get('x-forwarded-host');
+  const forwardedProto = req.headers.get('x-forwarded-proto');
+  const host = forwardedHost || req.headers.get('host');
+
+  if (host) {
+    const proto =
+      forwardedProto?.split(',')[0]?.trim() ||
+      (host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https');
+
+    return `${proto}://${host}`;
+  }
+
+  return process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+}
+
+export function getCookieSecurity(baseUrl: string): { secure: boolean; sameSite: 'lax' } {
+  return {
+    secure: process.env.NODE_ENV === 'production' || baseUrl.startsWith('https://'),
+    sameSite: 'lax',
+  };
+}
+
+export function getShopifyCustomerApiHeaders(accessToken: string, origin?: string) {
+  return {
+    'Authorization': accessToken,
+    'Content-Type': 'application/json',
+    ...(origin ? { 'Origin': origin } : {}),
+    'User-Agent': 'CitrixClothes/1.0',
+  };
+}
+
+export function getShopifyTokenHeaders(origin: string) {
+  return {
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Accept': 'application/json',
+    'Origin': origin,
+    'User-Agent': 'CitrixClothes/1.0',
+  };
+}
+
 /**
  * Fetch OpenID discovery metadata from Shopify
  * https://{shopDomain}/.well-known/openid-configuration
@@ -398,6 +449,88 @@ export async function getShopifyLoginUrl(): Promise<{
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[OAuth Helper] Error generating login URL:', message);
+    throw error;
+  }
+}
+
+/**
+ * ✅ Refresh Customer Access Token
+ * 
+ * Exchanges a refresh token for a new access token.
+ * Call this when the access token is close to expiry or returns 401.
+ * 
+ * Flow:
+ * 1. Get refresh token from cookies
+ * 2. Exchange refresh token for new access token at token endpoint
+ * 3. Update cookies with new tokens
+ * 4. Return new access token or throw error
+ * 
+ * Usage (server-side only):
+ * ```typescript
+ * try {
+ *   const newToken = await refreshAccessToken(refreshToken);
+ * } catch (error) {
+ *   // Refresh failed - clear cookies and redirect to login
+ * }
+ * ```
+ * 
+ * Security:
+ * - NEVER call from browser (tokens are httpOnly)
+ * - Always use server-side (API endpoints, middleware)
+ * - Returns new token as string for server use only
+ * - Never store new token in localStorage
+ * 
+ * @param refreshToken - The refresh token from cookies
+ * @returns New access token string
+ * @throws Error if refresh fails
+ */
+export async function refreshAccessToken(refreshToken: string, baseUrl = NEXT_PUBLIC_BASE_URL): Promise<string> {
+  if (!SHOPIFY_CLIENT_ID || !baseUrl) {
+    throw new Error('Missing OAuth environment variables');
+  }
+
+  console.log('[OAuth Refresh] Attempting to refresh access token');
+
+  try {
+    // Step 1: Fetch token endpoint from metadata
+    const metadata = await fetchOpenIDMetadata();
+    const redirectUri = `${baseUrl}/api/auth/callback`;
+
+    // Step 2: Exchange refresh token for new access token
+    const tokenResponse = await fetch(metadata.token_endpoint, {
+      method: 'POST',
+      headers: getShopifyTokenHeaders(baseUrl),
+      body: new URLSearchParams({
+        client_id: SHOPIFY_CLIENT_ID,
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        redirect_uri: redirectUri,
+      }).toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.json().catch(() => ({}));
+      console.error('[OAuth Refresh] Token refresh failed', {
+        status: tokenResponse.status,
+        error: (errorData as any).error,
+        timestamp: new Date().toISOString(),
+      });
+      throw new Error(`Token refresh failed: ${tokenResponse.status}`);
+    }
+
+    const tokenData = await tokenResponse.json();
+
+    console.log('[OAuth Refresh] Token refreshed successfully', {
+      hasAccessToken: !!tokenData.access_token,
+      hasRefreshToken: !!tokenData.refresh_token,
+      expiresIn: tokenData.expires_in,
+      timestamp: new Date().toISOString(),
+    });
+
+    return tokenData.access_token;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[OAuth Refresh] Error refreshing token:', message);
     throw error;
   }
 }

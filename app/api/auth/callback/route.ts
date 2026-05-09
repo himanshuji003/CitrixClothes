@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { validateEnv } from '@/lib/env-validation';
-import { fetchOpenIDMetadata } from '@/lib/shopify-auth';
+import {
+  fetchOpenIDMetadata,
+  getCookieSecurity,
+  getRequestBaseUrl,
+  getShopifyTokenHeaders,
+} from '@/lib/shopify-auth';
 
 /**
  * ✅ OAuth Callback Handler
@@ -83,7 +88,7 @@ export async function GET(req: NextRequest) {
         description: message,
         timestamp: new Date().toISOString(),
       });
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+      const baseUrl = getRequestBaseUrl(req);
       return NextResponse.redirect(
         `${baseUrl}/login?error=${encodeURIComponent(message)}`
       );
@@ -96,7 +101,7 @@ export async function GET(req: NextRequest) {
         hasCode: !!code,
         timestamp: new Date().toISOString(),
       });
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+      const baseUrl = getRequestBaseUrl(req);
       return NextResponse.redirect(
         `${baseUrl}/login?error=${encodeURIComponent('Authorization code not received from Shopify')}`
       );
@@ -131,7 +136,7 @@ export async function GET(req: NextRequest) {
         stateMatches: stateMatches,
         timestamp: new Date().toISOString(),
       });
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+      const baseUrl = getRequestBaseUrl(req);
       return NextResponse.redirect(
         `${baseUrl}/login?error=${encodeURIComponent('Session validation failed - please login again')}`
       );
@@ -163,7 +168,7 @@ export async function GET(req: NextRequest) {
         reason: 'Session may have expired (10-minute limit) or cookie was not set during login',
         timestamp: new Date().toISOString(),
       });
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+      const baseUrl = getRequestBaseUrl(req);
       return NextResponse.redirect(
         `${baseUrl}/login?error=${encodeURIComponent('Session expired - please login again')}`
       );
@@ -177,7 +182,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Step 4: Get environment variables for token exchange
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    const baseUrl = getRequestBaseUrl(req);
     const clientId = process.env.NEXT_PUBLIC_SHOPIFY_CLIENT_ID;
 
     if (!baseUrl || !clientId) {
@@ -246,10 +251,7 @@ export async function GET(req: NextRequest) {
 
     const tokenResponse = await fetch(metadata.token_endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-      },
+      headers: getShopifyTokenHeaders(baseUrl),
       body: tokenBody.toString(),
     });
 
@@ -326,15 +328,14 @@ export async function GET(req: NextRequest) {
 
     // ✅ Detect HTTPS (including ngrok) from BASE_URL for cookie security
     const isHttpsUrl = baseUrl.startsWith('https://');
-    const isProduction = process.env.NODE_ENV === 'production';
-    const shouldSetSecure = isProduction || isHttpsUrl;
+    const cookieSecurity = getCookieSecurity(baseUrl);
 
     if (process.env.NODE_ENV !== 'production') {
       console.log('[OAuth Callback] 🍪 Cookie Configuration:', {
         baseUrl: baseUrl,
         isHttpsUrl: isHttpsUrl,
         NODE_ENV: process.env.NODE_ENV,
-        secureFlagWillBe: shouldSetSecure,
+        secureFlagWillBe: cookieSecurity.secure,
         timestamp: new Date().toISOString(),
       });
     }
@@ -343,8 +344,8 @@ export async function GET(req: NextRequest) {
 
     cookieStore.set('shopify_customer_access_token', access_token, {
       httpOnly: true,
-      secure: shouldSetSecure,
-      sameSite: 'lax',
+      secure: cookieSecurity.secure,
+      sameSite: cookieSecurity.sameSite,
       path: '/',
       maxAge: maxAge,
     });
@@ -352,8 +353,8 @@ export async function GET(req: NextRequest) {
     if (refresh_token) {
       cookieStore.set('shopify_customer_refresh_token', refresh_token, {
         httpOnly: true,
-        secure: shouldSetSecure,
-        sameSite: 'lax',
+        secure: cookieSecurity.secure,
+        sameSite: cookieSecurity.sameSite,
         path: '/',
         maxAge: 365 * 24 * 60 * 60, // 1 year
       });
@@ -362,8 +363,8 @@ export async function GET(req: NextRequest) {
     if (id_token) {
       cookieStore.set('shopify_customer_id_token', id_token, {
         httpOnly: true,
-        secure: shouldSetSecure,
-        sameSite: 'lax',
+        secure: cookieSecurity.secure,
+        sameSite: cookieSecurity.sameSite,
         path: '/',
         maxAge: maxAge,
       });
@@ -382,13 +383,25 @@ export async function GET(req: NextRequest) {
         idToken: !!id_token,
       },
       temporarysCleaned: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: cookieSecurity.secure,
       timestamp: new Date().toISOString(),
     });
 
-    // Step 10: Redirect to account/dashboard
-    console.log('[OAuth Callback] PKCE OAuth flow complete - redirecting to account page', {
-      destination: '/account',
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[OAuth Callback] 🔐 Token Storage Verification:', {
+        accessTokenLength: access_token?.length || 0,
+        accessTokenPrefix: access_token?.slice(0, 8) || 'N/A',
+        refreshTokenExists: !!refresh_token,
+        idTokenExists: !!id_token,
+        message: 'Tokens are about to be stored in cookies - they will be available after redirect',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Step 10: Redirect to /account dashboard
+    // Profile completion check will happen client-side after tokens are established
+    console.log('[OAuth Callback] Redirecting to account dashboard', {
+      baseUrl: baseUrl,
       timestamp: new Date().toISOString(),
     });
 
@@ -402,14 +415,7 @@ export async function GET(req: NextRequest) {
       timestamp: new Date().toISOString(),
     });
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-    if (!baseUrl) {
-      console.error('[OAuth Callback] NEXT_PUBLIC_BASE_URL not configured');
-      return NextResponse.json(
-        { error: 'Configuration error. Please contact support.' },
-        { status: 500 }
-      );
-    }
+    const baseUrl = getRequestBaseUrl(req);
     return NextResponse.redirect(
       `${baseUrl}/login?error=${encodeURIComponent('An unexpected error occurred. Please try again.')}`
     );

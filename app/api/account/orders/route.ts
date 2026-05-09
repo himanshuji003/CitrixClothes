@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { fetchCustomerAccountApiMetadata } from '@/lib/shopify-auth';
+import {
+  fetchCustomerAccountApiMetadata,
+  getRequestBaseUrl,
+  getShopifyCustomerApiHeaders,
+} from '@/lib/shopify-auth';
 
 /**
  * ✅ Account API - Get Customer Orders
@@ -80,18 +84,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<OrdersResponse
       timestamp: new Date().toISOString(),
     });
 
-    // Validate token has correct prefix for Customer Account API
-    if (!token.startsWith('shcat_')) {
-      console.error('[/api/account/orders] ❌ FAILURE: Invalid token format', {
-        errorCode: 'INVALID_TOKEN_PREFIX',
-        tokenPrefix: token.slice(0, 8),
-        expected: 'shcat_',
-        timestamp: new Date().toISOString(),
-      });
-      return NextResponse.json({ success: false, orders: [] });
-    }
-
-    console.log('[/api/account/orders] ✅ Token format valid');
+    const baseUrl = getRequestBaseUrl(req);
 
     // Step 2: Fetch Customer Account API discovery metadata
     console.log('[/api/account/orders] Fetching Customer Account API metadata (.well-known endpoint)...');
@@ -165,10 +158,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<OrdersResponse
     try {
       response = await fetch(apiMetadata.graphql_url, {
         method: 'POST',
-        headers: {
-          'Authorization': token,
-          'Content-Type': 'application/json',
-        },
+        headers: getShopifyCustomerApiHeaders(token, baseUrl),
         body: JSON.stringify({ query: graphqlQuery }),
       });
 

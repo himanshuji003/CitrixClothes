@@ -118,7 +118,79 @@ export default function AccountPage() {
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
         try {
-          // Fetch user data
+          // Step 1: Check profile completion with retry logic for Shopify replication
+          console.log('[Account] Checking profile completion status');
+
+          // Helper function to check profile with retry
+          const checkProfileWithRetry = async () => {
+            const maxRetries = 3;
+            const retryDelays = [0, 1000, 1500]; // 0ms, 1s, 1.5s
+            let lastError;
+
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+              try {
+                if (attempt > 0) {
+                  console.log(`[Account] Retrying profile check (attempt ${attempt + 1}/${maxRetries})`);
+                  await new Promise(resolve => setTimeout(resolve, retryDelays[attempt]));
+                }
+
+                const response = await fetch('/api/account/profile-status', {
+                  signal: controller.signal,
+                });
+
+                console.log(`[Account] Profile status attempt ${attempt + 1}: ${response.status}`);
+
+                if (response.status === 401) {
+                  return { unauthorized: true };
+                }
+
+                if (response.ok) {
+                  const profileData = await response.json();
+                  console.log(`[Account] Profile status attempt ${attempt + 1}:`, {
+                    success: profileData.success,
+                    isComplete: profileData.isComplete,
+                  });
+
+                  if (profileData.success && !profileData.isComplete) {
+                    return { incomplete: true };
+                  }
+
+                  return { success: true };
+                }
+
+                lastError = response.status;
+              } catch (err) {
+                lastError = err;
+                if (attempt === maxRetries - 1) {
+                  console.warn('[Account] Profile check failed on final attempt:', err);
+                }
+              }
+            }
+
+            return { error: lastError };
+          };
+
+          const profileCheckResult = await checkProfileWithRetry();
+
+          if (profileCheckResult.unauthorized) {
+            console.log('[Account] Not authenticated during profile check - redirecting to login');
+            clearTimeout(timeoutId);
+            router.push('/login');
+            return;
+          }
+
+          if (profileCheckResult.incomplete) {
+            console.log('[Account] Profile incomplete - redirecting to /complete-profile');
+            clearTimeout(timeoutId);
+            router.replace('/complete-profile');
+            return;
+          }
+
+          if (profileCheckResult.error) {
+            console.warn('[Account] Profile status check failed after retries, continuing with account load');
+          }
+
+          // Step 2: Fetch user data
           console.log('[Account] Fetching user data from /api/account/me');
           const userResponse = await fetch('/api/account/me', {
             signal: controller.signal,
@@ -151,7 +223,7 @@ export default function AccountPage() {
 
           setUser(userData.user);
 
-          // Fetch orders data
+          // Step 3: Fetch orders data
           console.log('[Account] Fetching orders from /api/account/orders');
           const ordersResponse = await fetch('/api/account/orders', {
             signal: controller.signal,

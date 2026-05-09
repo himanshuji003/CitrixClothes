@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { AUTH_COOKIE_NAMES } from '@/lib/shopify-auth';
 
 /**
  * ✅ Logout Handler
@@ -26,6 +27,14 @@ import { cookies } from 'next/headers';
  * Reference: https://shopify.dev/docs/api/customer-account/latest
  */
 
+async function clearAuthCookies() {
+  const cookieStore = await cookies();
+
+  Object.values(AUTH_COOKIE_NAMES).forEach((name) => {
+    cookieStore.delete(name);
+  });
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     console.log('[/api/auth/logout] Logout request received', {
@@ -33,29 +42,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
 
     // Step 1: Delete all authentication cookies
-    const cookieStore = await cookies();
-
-    // Delete OAuth/token cookies
-    cookieStore.delete('shopify_customer_access_token');
-    cookieStore.delete('shopify_customer_refresh_token');
-    cookieStore.delete('shopify_customer_id_token');
-
-    // Delete temporary PKCE and security cookies (just in case)
-    cookieStore.delete('pkce_verifier');
-    cookieStore.delete('oauth_state');
-    cookieStore.delete('oauth_nonce');
-
-    // Delete legacy customer_token cookie if it exists
-    cookieStore.delete('customer_token');
+    await clearAuthCookies();
 
     console.log('[/api/auth/logout] All authentication cookies cleared', {
       timestamp: new Date().toISOString(),
     });
 
-    // Step 2: Redirect to homepage
-    // Using 303 (See Other) status for POST redirects (RFC 7231)
-    // This ensures the browser performs a GET on the redirect target
-    return NextResponse.redirect(new URL('/', req.url), { status: 303 });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('[/api/auth/logout] Unexpected error:', {
       error: error instanceof Error ? error.message : String(error),
@@ -63,8 +56,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       timestamp: new Date().toISOString(),
     });
 
-    // Even on error, try to redirect home (logout should be safe)
-    // This ensures logout is resilient to edge cases
-    return NextResponse.redirect(new URL('/', req.url), { status: 303 });
+    return NextResponse.json({ success: true });
   }
+}
+
+export async function GET(req: NextRequest): Promise<NextResponse> {
+  try {
+    await clearAuthCookies();
+  } catch (error) {
+    console.error('[/api/auth/logout] Error clearing cookies for GET logout:', {
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  return NextResponse.redirect(new URL('/', req.url), { status: 303 });
 }

@@ -7,6 +7,8 @@ import {
   generateState,
   generateNonce,
   fetchOpenIDMetadata,
+  getCookieSecurity,
+  getRequestBaseUrl,
 } from '@/lib/shopify-auth';
 
 /**
@@ -40,10 +42,7 @@ export async function GET(req: NextRequest) {
     // Validate environment variables early
     validateEnv();
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-    if (!baseUrl) {
-      throw new Error('Missing NEXT_PUBLIC_BASE_URL environment variable');
-    }
+    const baseUrl = getRequestBaseUrl(req);
 
     console.log('[/api/auth/login] Login flow initiated', {
       timestamp: new Date().toISOString(),
@@ -79,39 +78,38 @@ export async function GET(req: NextRequest) {
     // ✅ Detect HTTPS (including ngrok) from BASE_URL, not just NODE_ENV
     // ngrok uses HTTPS and requires secure: true or cookies won't be sent back
     const isHttpsUrl = baseUrl.startsWith('https://');
-    const isProduction = process.env.NODE_ENV === 'production';
-    const shouldSetSecure = isProduction || isHttpsUrl;
+    const cookieSecurity = getCookieSecurity(baseUrl);
 
     if (process.env.NODE_ENV !== 'production') {
       console.log('[/api/auth/login] Cookie configuration:', {
         baseUrl: baseUrl,
         isHttpsUrl: isHttpsUrl,
         NODE_ENV: process.env.NODE_ENV,
-        secureFlagWillBe: shouldSetSecure,
+        secureFlagWillBe: cookieSecurity.secure,
         timestamp: new Date().toISOString(),
       });
     }
 
     cookieStore.set('pkce_verifier', codeVerifier, {
       httpOnly: true,
-      secure: shouldSetSecure,
-      sameSite: 'lax',
+      secure: cookieSecurity.secure,
+      sameSite: cookieSecurity.sameSite,
       path: '/',
       maxAge: 600, // 10 minutes (authorization code expires quickly)
     });
 
     cookieStore.set('oauth_state', state, {
       httpOnly: true,
-      secure: shouldSetSecure,
-      sameSite: 'lax',
+      secure: cookieSecurity.secure,
+      sameSite: cookieSecurity.sameSite,
       path: '/',
       maxAge: 600, // 10 minutes
     });
 
     cookieStore.set('oauth_nonce', nonce, {
       httpOnly: true,
-      secure: shouldSetSecure,
-      sameSite: 'lax',
+      secure: cookieSecurity.secure,
+      sameSite: cookieSecurity.sameSite,
       path: '/',
       maxAge: 600, // 10 minutes
     });
@@ -121,7 +119,7 @@ export async function GET(req: NextRequest) {
         pkce_verifier: 'set ✓',
         oauth_state: 'set ✓',
         oauth_nonce: 'set ✓',
-        secure: shouldSetSecure,
+        secure: cookieSecurity.secure,
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
@@ -176,13 +174,7 @@ export async function GET(req: NextRequest) {
       timestamp: new Date().toISOString(),
     });
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-    if (!baseUrl) {
-      return NextResponse.json(
-        { error: 'Server configuration error. Please contact support.' },
-        { status: 500 }
-      );
-    }
+    const baseUrl = getRequestBaseUrl(req);
 
     return NextResponse.redirect(
       `${baseUrl}/login?error=${encodeURIComponent(

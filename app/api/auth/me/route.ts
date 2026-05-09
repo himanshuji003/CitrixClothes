@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { fetchCustomerAccountApiMetadata } from '@/lib/shopify-auth';
+import {
+  fetchCustomerAccountApiMetadata,
+  getRequestBaseUrl,
+  getShopifyCustomerApiHeaders,
+} from '@/lib/shopify-auth';
 
 /**
  * ✅ PHASE 3+: Fetch Current User Data
@@ -93,27 +97,8 @@ export async function GET(req: NextRequest): Promise<NextResponse<MeResponse>> {
       }
     `;
 
-    // ✅ Validate token format before using it
-    // Customer Account API requires tokens starting with shcat_
-    if (!token.startsWith('shcat_')) {
-      console.error('[/api/auth/me] Invalid token format - wrong token type used', {
-        errorCode: 'INVALID_TOKEN_FORMAT',
-        tokenPrefix: token.slice(0, 8),
-        expectedPrefix: 'shcat_',
-        timestamp: new Date().toISOString(),
-      });
-      return NextResponse.json(
-        { 
-          user: null,
-          error: 'Invalid token format for Customer Account API (requires shcat_ prefix)' 
-        },
-        { status: 401 }
-      );
-    }
-
     if (process.env.NODE_ENV !== 'production') {
-      console.log('[/api/auth/me] ✅ Token format valid - sending GraphQL query to Customer Account API', {
-        tokenPrefix: token.slice(0, 6),
+      console.log('[/api/auth/me] Sending GraphQL query to Customer Account API', {
         endpoint: graphqlUrl,
         timestamp: new Date().toISOString(),
       });
@@ -124,10 +109,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<MeResponse>> {
     // Shopify Customer Account API expects Authorization: {token}
     const shopifyResponse = await fetch(graphqlUrl, {
       method: 'POST',
-      headers: {
-        'Authorization': token,
-        'Content-Type': 'application/json',
-      },
+      headers: getShopifyCustomerApiHeaders(token, getRequestBaseUrl(req)),
       body: JSON.stringify({ query: graphqlQuery }),
     });
 

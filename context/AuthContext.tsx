@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      console.log('[AuthContext] Fetching user data from /api/auth/me');
+      console.log('[AuthContext] Fetching user data from /api/account/me');
 
       // Create abort controller for timeout
       const controller = new AbortController();
@@ -133,13 +133,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('[AuthContext] Initiating logout');
 
-      // Call logout API to delete cookie
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include', // Send cookies with request
+        headers: {
+          'Accept': 'application/json',
+        },
       });
 
       console.log('[AuthContext] Logout API response:', response.status);
+
+      if (!response.ok) {
+        throw new Error(`Logout failed: ${response.status}`);
+      }
 
       // Clear user state immediately (API will handle redirect)
       setUser(null);
@@ -153,9 +159,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Logout failed';
       console.error('[AuthContext] Logout error:', message);
-      setError(message);
-      // Still clear user on error for safety
       setUser(null);
+      setError(null);
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
     } finally {
       setIsLoading(false);
     }

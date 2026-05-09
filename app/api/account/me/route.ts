@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { fetchCustomerAccountApiMetadata } from '@/lib/shopify-auth';
+import {
+  fetchCustomerAccountApiMetadata,
+  getCookieSecurity,
+  getRequestBaseUrl,
+  getShopifyCustomerApiHeaders,
+  refreshAccessToken,
+} from '@/lib/shopify-auth';
 
 /**
  * ✅ Account API - Get Current User
@@ -17,8 +23,10 @@ import { fetchCustomerAccountApiMetadata } from '@/lib/shopify-auth';
  * Flow:
  * 1. Check if customer access_token cookie exists
  * 2. If exists, query Shopify Customer Account API
- * 3. Return user data (id, firstName, lastName, email, phone)
- * 4. If no token or invalid, return 401 with user: null
+ * 3. If 401, attempt to refresh token using refresh_token
+ * 4. Retry query with new token if refresh succeeds
+ * 5. Return user data (id, firstName, lastName, email, phone)
+ * 6. If no token or invalid, return 401 with user: null
  * 
  * GraphQL Schema (Shopify Customer Account API):
  * - emailAddress is a nested object: { emailAddress }
@@ -66,19 +74,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<MeResponse>> {
       timestamp: new Date().toISOString(),
     });
 
-    // Validate token has correct prefix for Customer Account API
-    if (!token.startsWith('shcat_')) {
-      console.error('[/api/account/me] Invalid token format', {
-        errorCode: 'INVALID_TOKEN_PREFIX',
-        tokenPrefix: token.slice(0, 8),
-        expected: 'shcat_',
-        timestamp: new Date().toISOString(),
-      });
-      return NextResponse.json(
-        { user: null, error: 'Wrong or missing Customer Account access token' },
-        { status: 401 }
-      );
-    }
+    const baseUrl = getRequestBaseUrl(req);
 
     // Step 2: Fetch Customer Account API discovery metadata
     const apiMetadata = await fetchCustomerAccountApiMetadata();
@@ -112,10 +108,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<MeResponse>> {
     // Step 4: Make request to Shopify Customer Account API
     const shopifyResponse = await fetch(apiMetadata.graphql_url, {
       method: 'POST',
-      headers: {
-        'Authorization': token,
-        'Content-Type': 'application/json',
-      },
+      headers: getShopifyCustomerApiHeaders(token, baseUrl),
       body: JSON.stringify({ query: graphqlQuery }),
     });
 
@@ -150,10 +143,86 @@ export async function GET(req: NextRequest): Promise<NextResponse<MeResponse>> {
         timestamp: new Date().toISOString(),
       });
 
-      // 401 means token is invalid/expired - clear it
+      // 401 means token is invalid/expired - attempt refresh
       if (shopifyResponse.status === 401) {
+        console.log('[/api/account/me] Token returned 401 - attempting to refresh', {
+          timestamp: new Date().toISOString(),
+        });
+
+        try {
+          // Try to refresh the token
+          const refreshToken = cookieStore.get('shopify_customer_refresh_token')?.value;
+          
+          if (refreshToken) {
+            console.log('[/api/account/me] Refresh token found - attempting refresh');
+            const newAccessToken = await refreshAccessToken(refreshToken, baseUrl);
+
+            // Update the access token cookie
+            const maxAge = 24 * 60 * 60; // 24 hours default
+            const cookieSecurity = getCookieSecurity(baseUrl);
+
+            cookieStore.set('shopify_customer_access_token', newAccessToken, {
+              httpOnly: true,
+              secure: cookieSecurity.secure,
+              sameSite: cookieSecurity.sameSite,
+              path: '/',
+              maxAge,
+            });
+
+            console.log('[/api/account/me] Token refreshed successfully - retrying query');
+
+            // Retry the GraphQL query with the new token
+            const retryResponse = await fetch(apiMetadata.graphql_url, {
+              method: 'POST',
+              headers: getShopifyCustomerApiHeaders(newAccessToken, baseUrl),
+              body: JSON.stringify({ query: graphqlQuery }),
+            });
+
+            let retryData;
+            try {
+              retryData = await retryResponse.json();
+            } catch (parseError) {
+              console.error('[/api/account/me] Failed to parse retry response', {
+                error: parseError instanceof Error ? parseError.message : String(parseError),
+                timestamp: new Date().toISOString(),
+              });
+              return NextResponse.json({ user: null, error: 'Invalid API response' }, { status: 500 });
+            }
+
+            if (retryResponse.ok && !retryData.errors && retryData.data?.customer) {
+              console.log('[/api/account/me] Retry query succeeded after token refresh');
+              const customer = retryData.data.customer;
+              const customerData: CustomerData = {
+                id: customer?.id ?? null,
+                firstName: customer?.firstName ?? null,
+                lastName: customer?.lastName ?? null,
+                name: customer?.displayName ?? null,
+                email: customer?.emailAddress?.emailAddress ?? null,
+                phone: customer?.phoneNumber?.phoneNumber ?? null,
+              };
+
+              return NextResponse.json({
+                user: customerData,
+              });
+            } else {
+              console.log('[/api/account/me] Retry query failed after token refresh');
+              // Fall through to clear cookies and return 401
+            }
+          } else {
+            console.log('[/api/account/me] No refresh token available');
+          }
+        } catch (refreshError) {
+          console.error('[/api/account/me] Token refresh failed', {
+            error: refreshError instanceof Error ? refreshError.message : String(refreshError),
+            timestamp: new Date().toISOString(),
+          });
+          // Fall through to clear cookies and return 401
+        }
+
+        // If refresh failed or wasn't attempted, clear tokens and return 401
         cookieStore.delete('shopify_customer_access_token');
-        console.log('[/api/account/me] Token invalid (401) - clearing cookie', {
+        cookieStore.delete('shopify_customer_refresh_token');
+        console.log('[/api/account/me] Token invalid (401) - clearing cookies', {
           timestamp: new Date().toISOString(),
         });
       }

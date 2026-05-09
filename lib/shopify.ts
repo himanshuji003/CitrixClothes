@@ -449,3 +449,66 @@ export async function updateCustomerPassword(
 
   return data.customerUpdate;
 }
+
+/* ============================================= */
+/* CUSTOMER ACCOUNT API - Profile Management    */
+/* Used in /api/account/* endpoints             */
+/* ============================================= */
+
+/**
+ * GraphQL Query to fetch customer with metafields
+ * Used by GET /api/account/profile-status
+ * Customer Account API v2026-04
+ */
+export const GET_CUSTOMER_WITH_METAFIELDS_QUERY = `
+  query GetCustomerWithMetafields {
+    customer {
+      id
+      displayName
+      firstName
+      lastName
+      emailAddress {
+        emailAddress
+      }
+      phoneNumber {
+        phoneNumber
+      }
+      metafields(first: 10, namespace: "custom") {
+        edges {
+          node {
+            key
+            value
+          }
+        }
+      }
+    }
+  }
+`;
+
+/**
+ * GraphQL Mutation to set customer metafields
+ * Used by POST /api/account/complete-profile
+ * Customer Account API v2026-04
+ * 
+ * Saves profile data:
+ * - custom.full_name: string
+ * - custom.mobile_number: string
+ * - custom.age: number
+ * - custom.gender: string
+ */
+export const SET_CUSTOMER_METAFIELDS_MUTATION = `
+  mutation SetCustomerMetafields($input: MetafieldsSetInput!) {
+    metafieldsSet(input: $input) {
+      metafields {
+        key
+        namespace
+        value
+      }
+      userErrors {
+        field
+        message
+        code
+      }
+    }
+  }
+`;
