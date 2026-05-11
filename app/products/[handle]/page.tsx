@@ -2,6 +2,11 @@ import { notFound } from 'next/navigation';
 import { getProductByHandle, getProducts } from '@/lib/shopify';
 import ProductDetail from '@/components/product/ProductDetail';
 
+// ISR every 60 seconds: revalidates product data to show price/inventory updates
+export const revalidate = 60;
+// dynamicParams=true allows new Shopify products to render without 404, even before pre-rendering
+export const dynamicParams = true;
+
 export async function generateMetadata({ 
   params 
 }: { 

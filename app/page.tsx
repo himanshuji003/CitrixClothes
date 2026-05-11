@@ -6,6 +6,9 @@ import { getProducts, getCollections } from '@/lib/shopify';
 import ProductGrid from '@/components/product/ProductGrid';
 import { ProductGridSkeleton } from '@/components/skeletons/ProductCardSkeleton';
 
+// ISR every 60 seconds: ensures featured products and collections display latest items from Shopify
+export const revalidate = 60;
+
 async function NewArrivals() {
   const products = await getProducts();
   return <ProductGrid products={products.slice(0, 8)} />;
