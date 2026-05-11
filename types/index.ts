@@ -17,7 +17,7 @@ export interface Product {
   description: string;
   images: string[];
   sizes: string[];
-  variants?: ShopifyVariant[];
+  variants: ShopifyVariant[]; // REQUIRED - must always be present for checkout
   tag?: string | null;
 }
 

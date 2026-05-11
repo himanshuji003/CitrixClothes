@@ -27,45 +27,77 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = typeof window !== 'undefined' ? window.localStorage.getItem(LS_KEY) : null;
-      if (raw) setItems(JSON.parse(raw));
-    } catch {}
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        console.log('[Cart] Hydrating from localStorage', { itemCount: parsed.length, items: parsed });
+        setItems(parsed);
+      }
+    } catch (e) {
+      console.error('[Cart] Failed to hydrate from localStorage', e);
+    }
     setHydrated(true);
   }, []);
 
   useEffect(() => {
     if (!hydrated) return;
-    try { window.localStorage.setItem(LS_KEY, JSON.stringify(items)); } catch {}
+    try {
+      console.log('[Cart] Saving to localStorage', { itemCount: items.length, items });
+      window.localStorage.setItem(LS_KEY, JSON.stringify(items));
+    } catch (e) {
+      console.error('[Cart] Failed to save to localStorage', e);
+    }
   }, [items, hydrated]);
 
   const addItem = useCallback((product: Product, size: string | null, qty = 1) => {
     const variantId = findVariantBySize(product.variants, size);
     
-    if (!variantId && size) {
-      console.error('[Cart] addItem: Failed to find variant ID for product with selected size', {
+    console.log('[Cart] addItem: findVariantBySize returned', {
+      productHandle: product.handle,
+      variantId,
+      variantIdType: typeof variantId,
+      variantIdLength: typeof variantId === 'string' ? variantId.length : 'N/A',
+    });
+    
+    if (!variantId) {
+      console.error('[Cart] addItem: Failed to find variant ID for product', {
         productHandle: product.handle,
         selectedSize: size,
         availableSizes: product.sizes,
         variantCount: product.variants?.length,
+        variants: product.variants?.map((v: any) => ({
+          id: v.id,
+          title: v.title,
+          selectedOptions: v.selectedOptions,
+        })),
+      });
+    } else if (product.variants?.length === 1) {
+      console.log('[Cart] addItem: Using first variant for single-variant product', {
+        productHandle: product.handle,
+        variantId,
       });
     }
 
     setItems((prev) => {
       const key = `${product.handle}__${size || 'default'}`;
       const existing = prev.find((i) => i.key === key);
-      if (existing) return prev.map((i) => (i.key === key ? { ...i, qty: i.qty + qty } : i));
-      return [
-        ...prev,
-        {
-          key,
-          handle: product.handle,
-          title: product.title,
-          price: product.price,
-          image: product.images?.[0],
-          size,
-          qty,
-          variantId: variantId || undefined,
-        },
-      ];
+      
+      const newItem: CartItem = {
+        key,
+        handle: product.handle,
+        title: product.title,
+        price: product.price,
+        image: product.images?.[0],
+        size,
+        qty: existing ? existing.qty + qty : qty,
+        variantId: variantId, // Store only if we have a value, don't set to undefined
+      };
+      
+      console.log('[Cart] addItem: Creating cart item', { newItem });
+      
+      if (existing) {
+        return prev.map((i) => (i.key === key ? newItem : i));
+      }
+      return [...prev, newItem];
     });
     
     console.log('[Cart] addItem: Item added to cart', {

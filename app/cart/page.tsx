@@ -16,12 +16,22 @@ export default function CartPage() {
   const onCheckout = async () => {
     setLoading(true);
     try {
+      console.log('[Cart] onCheckout: Starting checkout', { itemCount: items.length, items });
+      
       // Validate cart items have variant IDs
       const itemsWithoutVariants = items.filter((i) => !i.variantId);
       if (itemsWithoutVariants.length > 0) {
         console.error('[Cart] onCheckout: Cart contains items without valid variant IDs', {
           count: itemsWithoutVariants.length,
-          items: itemsWithoutVariants.map((i) => ({ title: i.title, size: i.size })),
+          itemsWithoutVariants,
+          allItems: items.map((i) => ({
+            title: i.title,
+            handle: i.handle,
+            size: i.size,
+            key: i.key,
+            variantId: i.variantId,
+            variantIdType: typeof i.variantId,
+          })),
         });
         toast.error('Some items in your cart are missing variant information. Please remove and re-add them.');
         return;

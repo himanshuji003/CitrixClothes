@@ -60,7 +60,7 @@ function normalizeShopifyProduct(p: any): Product | null {
     )
   ) as string[];
 
-  return {
+  const product: Product = {
     handle: p.handle,
     title: p.title,
     description: p.description,
@@ -70,17 +70,58 @@ function normalizeShopifyProduct(p: any): Product | null {
       : null,
     currency: p.priceRange?.minVariantPrice?.currencyCode || 'INR',
     images: (p.images?.edges || []).map((e: any) => e.node.url),
-    sizes,
-    variants,
+    sizes: sizes.length > 0 ? sizes : ['Free Size'], // Default to Free Size if no sizes found
+    variants: variants.length > 0 ? variants : [], // Ensure variants is always an array
     tag: (p.tags || [])[0] || null,
   };
+
+  console.log('[normalizeShopifyProduct] Normalized product', {
+    handle: product.handle,
+    title: product.title,
+    variantCount: product.variants.length,
+    sizes: product.sizes,
+    variantIds: product.variants.map((v: any) => v.id),
+  });
+
+  return product;
 }
 
+/**
+ * Find a variant by size, with fallback for single-variant products.
+ * For single-variant products, automatically uses the first variant's ID.
+ * For multi-variant products, matches by size selectedOption.
+ */
 export function findVariantBySize(
   variants: any[] | undefined,
   selectedSize: string | null
 ): string | null {
-  if (!selectedSize || !variants || variants.length === 0) return null;
+  console.log('[findVariantBySize] Called with', {
+    variantsArray: variants,
+    variantCount: variants?.length,
+    selectedSize,
+    variantIds: variants?.map((v: any) => v.id),
+  });
+
+  if (!variants || variants.length === 0) {
+    console.warn('[findVariantBySize] No variants available');
+    return null;
+  }
+
+  // For single-variant products, always use the first variant
+  if (variants.length === 1) {
+    const variantId = variants[0]?.id;
+    console.log('[findVariantBySize] Single variant product, using first variant', {
+      variantId,
+      variantObject: variants[0],
+    });
+    return variantId || null;
+  }
+
+  // For multi-variant products, find by size
+  if (!selectedSize) {
+    console.warn('[findVariantBySize] No size selected for multi-variant product');
+    return null;
+  }
 
   const variant = variants.find((v) => {
     const sizeOption = (v.selectedOptions || []).find(
@@ -89,7 +130,14 @@ export function findVariantBySize(
     return sizeOption?.value === selectedSize;
   });
 
-  return variant?.id || null;
+  const result = variant?.id || null;
+  console.log('[findVariantBySize] Result for multi-variant', {
+    selectedSize,
+    foundVariant: variant,
+    variantId: result,
+  });
+
+  return result;
 }
 
 /* ---------------- PRODUCTS ---------------- */
@@ -113,8 +161,18 @@ export async function getProducts(): Promise<Product[]> {
 export async function getProductByHandle(
   handle: string
 ): Promise<Product | null> {
-  if (!isShopifyConfigured())
-    return PRODUCTS.find((p) => p.handle === handle) || null;
+  console.log('[getProductByHandle] Fetching product', { handle, shopifyConfigured: isShopifyConfigured() });
+
+  if (!isShopifyConfigured()) {
+    console.log('[getProductByHandle] Shopify not configured, using mock data');
+    const mock = PRODUCTS.find((p) => p.handle === handle);
+    console.log('[getProductByHandle] Mock product result', {
+      found: !!mock,
+      handle: mock?.handle,
+      variants: mock?.variants?.length,
+    });
+    return mock || null;
+  }
 
   try {
     const data = await shopifyFetch<{ productByHandle: any }>({
@@ -122,9 +180,20 @@ export async function getProductByHandle(
       variables: { handle },
     });
 
-    return normalizeShopifyProduct(data.productByHandle);
-  } catch {
-    return PRODUCTS.find((p) => p.handle === handle) || null;
+    console.log('[getProductByHandle] Shopify fetch succeeded, normalizing...');
+    const product = normalizeShopifyProduct(data.productByHandle);
+    console.log('[getProductByHandle] Shopify product normalized', {
+      handle: product?.handle,
+      variants: product?.variants?.length,
+    });
+    return product;
+  } catch (error) {
+    console.error('[getProductByHandle] Shopify fetch failed, falling back to mock', {
+      error: error instanceof Error ? error.message : String(error),
+      handle,
+    });
+    const mock = PRODUCTS.find((p) => p.handle === handle);
+    return mock || null;
   }
 }
 
@@ -150,7 +219,17 @@ export async function getCollections(): Promise<Collection[]> {
 /* ---------------- CART ---------------- */
 
 export async function createCart(lines: CartLineInput[]): Promise<Cart> {
+  console.log('[Shopify] createCart: Received lines', {
+    lineCount: lines.length,
+    lines: lines.map((l) => ({
+      merchandiseId: l.merchandiseId,
+      quantity: l.quantity,
+      merchandiseIdType: typeof l.merchandiseId,
+    })),
+  });
+
   if (!isShopifyConfigured()) {
+    console.warn('[Shopify] createCart: Shopify not configured, returning mock cart');
     return {
       id: 'mock-cart',
       checkoutUrl: '#mock-checkout',
@@ -158,14 +237,27 @@ export async function createCart(lines: CartLineInput[]): Promise<Cart> {
     };
   }
 
-  const data = await shopifyFetch<{
-    cartCreate: { cart: Cart };
-  }>({
-    query: CART_CREATE_MUTATION,
-    variables: { lines },
-  });
+  try {
+    const data = await shopifyFetch<{
+      cartCreate: { cart: Cart };
+    }>({
+      query: CART_CREATE_MUTATION,
+      variables: { lines },
+    });
 
-  return data.cartCreate.cart;
+    console.log('[Shopify] createCart: Success', {
+      cartId: data.cartCreate.cart.id,
+      checkoutUrl: data.cartCreate.cart.checkoutUrl,
+    });
+
+    return data.cartCreate.cart;
+  } catch (error) {
+    console.error('[Shopify] createCart: Failed', {
+      error: error instanceof Error ? error.message : String(error),
+      lines,
+    });
+    throw error;
+  }
 }
 
 export async function addToCart(
