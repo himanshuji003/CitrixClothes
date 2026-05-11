@@ -89,7 +89,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         image: product.images?.[0],
         size,
         qty: existing ? existing.qty + qty : qty,
-        variantId: variantId, // Store only if we have a value, don't set to undefined
+        variantId: variantId || undefined, // Store only if we have a value, don't set to undefined
       };
       
       console.log('[Cart] addItem: Creating cart item', { newItem });
