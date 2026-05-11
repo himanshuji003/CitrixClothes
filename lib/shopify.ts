@@ -10,6 +10,7 @@ import {
   CART_LINES_ADD_MUTATION,
   CART_LINES_UPDATE_MUTATION,
   CART_LINES_REMOVE_MUTATION,
+  HERO_METAOBJECT_QUERY,
 } from './queries';
 
 import type { Cart, CartLineInput, Collection, Product } from '@/types';
@@ -216,7 +217,49 @@ export async function getCollections(): Promise<Collection[]> {
   }
 }
 
-/* ---------------- CART ---------------- */
+/* ---------------- HERO SECTION ---------------- */
+
+/**
+ * Fetch hero section data from Shopify metaobject
+ * Returns null if Shopify not configured or metaobject doesn't exist
+ */
+export async function getHeroMetaobject(): Promise<Record<string, string> | null> {
+  if (!isShopifyConfigured()) return null;
+
+  try {
+    const data = await shopifyFetch<{
+      metaobject: {
+        id: string;
+        type: string;
+        fields: Array<{ key: string; value: string }>;
+      } | null;
+    }>({
+      query: HERO_METAOBJECT_QUERY,
+    });
+
+    if (!data.metaobject) {
+      console.warn('[HeroMetaobject] Metaobject not found in Shopify');
+      return null;
+    }
+
+    // Convert fields array to object
+    const heroData: Record<string, string> = {};
+    data.metaobject.fields.forEach((field) => {
+      heroData[field.key] = field.value;
+    });
+
+    console.log('[HeroMetaobject] Successfully fetched from Shopify', {
+      keys: Object.keys(heroData),
+    });
+
+    return heroData;
+  } catch (error) {
+    console.warn('[HeroMetaobject] Failed to fetch from Shopify', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
 
 export async function createCart(lines: CartLineInput[]): Promise<Cart> {
   console.log('[Shopify] createCart: Received lines', {

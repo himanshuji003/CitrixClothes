@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { Suspense } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { getProducts, getCollections } from '@/lib/shopify';
+import DynamicHero from '@/components/DynamicHero';
 import ProductGrid from '@/components/product/ProductGrid';
 import { ProductGridSkeleton } from '@/components/skeletons/ProductCardSkeleton';
 
@@ -32,19 +33,7 @@ async function FeaturedCollections() {
 export default function HomePage() {
   return (
     <>
-      <section className="relative w-full h-[78vh] md:h-[88vh] min-h-[520px] overflow-hidden">
-        <Image src="https://images.unsplash.com/photo-1571908599407-cdb918ed83bf?auto=format&fit=crop&w=2000&q=85" alt="Suitique Designs Hero" fill priority sizes="100vw" className="object-cover object-center" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/55" />
-        <div className="relative h-full container flex flex-col justify-end pb-14 md:pb-24 text-cream-50">
-          <span className="text-[11px] md:text-xs uppercase tracking-[0.32em] mb-4 opacity-90">Festive Edit · 2025</span>
-          <h1 className="font-serif text-4xl sm:text-5xl md:text-7xl leading-[1.05] max-w-2xl text-balance">Heirlooms for the modern muse.</h1>
-          <p className="mt-4 max-w-md text-sm md:text-base text-cream-50/85 leading-relaxed">Hand-crafted Organza, Silk and Chanderi — woven with stories from across India.</p>
-          <div className="mt-7 flex flex-col sm:flex-row gap-3">
-            <Link href="/collections" className="inline-flex items-center justify-center bg-cream-50 text-brand-900 hover:bg-cream-100 transition-colors px-8 h-12 text-xs uppercase tracking-[0.22em]">Shop Now <ArrowRight className="ml-2 h-4 w-4" /></Link>
-            <Link href="/collections/silk" className="inline-flex items-center justify-center border border-cream-50/70 hover:bg-cream-50/10 text-cream-50 transition-colors px-8 h-12 text-xs uppercase tracking-[0.22em]">The Bridal Edit</Link>
-          </div>
-        </div>
-      </section>
+      <DynamicHero />
 
       <div className="border-y border-border bg-cream-100">
         <div className="container py-3 flex items-center justify-center gap-8 text-[11px] uppercase tracking-[0.28em] text-brand-900/70 overflow-x-auto scrollbar-hide whitespace-nowrap">
