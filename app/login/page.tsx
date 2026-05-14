@@ -36,12 +36,16 @@ export default function LoginPage() {
    * 4. Redirect to Shopify OAuth endpoint
    */
   const handleLogin = async () => {
-    console.log("LOGIN CLICKED");
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('LOGIN CLICKED');
+    }
     setIsLoading(true);
     setError(null);
 
     try {
-      console.log('[Login Page] Starting OAuth login flow via /api/auth/login');
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Login Page] Starting OAuth login flow via /api/auth/login');
+      }
 
       // Redirect to server-side login route
       // The /api/auth/login route will:
@@ -50,15 +54,19 @@ export default function LoginPage() {
       // 3. Store them in secure cookies
       // 4. Redirect to Shopify authorization endpoint
       window.location.href = '/api/auth/login';
-      console.log('[Login Page] Redirected to /api/auth/login');
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Login Page] Redirected to /api/auth/login');
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to initiate login';
-      console.error('[Login Page] Login failed with error:', {
-        error: message,
-        errorType: err instanceof Error ? err.constructor.name : typeof err,
-        fullError: err,
-        timestamp: new Date().toISOString(),
-      });
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[Login Page] Login failed with error:', {
+          error: message,
+          errorType: err instanceof Error ? err.constructor.name : typeof err,
+          fullError: err,
+          timestamp: new Date().toISOString(),
+        });
+      }
       setError(message);
       setIsLoading(false);
     }

@@ -55,7 +55,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      console.log('[AuthContext] Fetching user data from /api/auth/me');
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[AuthContext] Fetching user data from /api/auth/me');
+      }
 
       // Create abort controller for timeout
       const controller = new AbortController();
@@ -71,7 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearTimeout(timeoutId);
 
         if (response.status === 401) {
-          console.log('[AuthContext] Unauthorized (401) - user not authenticated');
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[AuthContext] Unauthorized (401) - user not authenticated');
+          }
           setUser(null);
           return;
         }
@@ -82,10 +86,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const data = await response.json();
 
-        console.log('[AuthContext] User data response:', {
-          hasUser: !!data.user,
-          email: data.user?.email,
-        });
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[AuthContext] User data response:', {
+            hasUser: !!data.user,
+            email: data.user?.email,
+          });
+        }
 
         setUser(data.user);
       } catch (err) {
@@ -95,11 +101,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       // Don't set error for abort errors - just clear user
       if (err instanceof Error && err.name === 'AbortError') {
-        console.warn('[AuthContext] User fetch timeout');
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[AuthContext] User fetch timeout');
+        }
         setUser(null);
       } else {
         const message = err instanceof Error ? err.message : 'Failed to fetch user';
-        console.error('[AuthContext] Error fetching user:', message);
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('[AuthContext] Error fetching user:', message);
+        }
         setError(message);
         setUser(null);
       }
@@ -131,7 +141,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
-      console.log('[AuthContext] Initiating logout');
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[AuthContext] Initiating logout');
+      }
 
       // Call logout API to delete cookie
       const response = await fetch('/api/auth/logout', {
@@ -139,7 +151,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: 'include', // Send cookies with request
       });
 
-      console.log('[AuthContext] Logout API response:', response.status);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[AuthContext] Logout API response:', response.status);
+      }
 
       // Clear user state immediately (API will handle redirect)
       setUser(null);
@@ -152,7 +166,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Logout failed';
-      console.error('[AuthContext] Logout error:', message);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[AuthContext] Logout error:', message);
+      }
       setError(message);
       // Still clear user on error for safety
       setUser(null);

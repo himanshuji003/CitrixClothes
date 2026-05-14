@@ -10,11 +10,6 @@ import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 import SearchDialog from '@/components/search/SearchDialog';
 
-// ✅ PHASE 2: OAuth Authentication
-// Users now redirect to /login and /signup pages which initiate OAuth flow
-// import { ShopifyLoginButton } from '@/components/auth/ShopifyLoginButton';
-// import { ShopifySignupButton } from '@/components/auth/ShopifySignupButton';
-
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_refined-retail-1/artifacts/7sv48thr_image.png';
 
 const NAV_LINKS = [

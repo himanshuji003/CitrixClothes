@@ -39,25 +39,33 @@ export default function SignupPage() {
    * If user doesn't exist, Shopify will create account automatically.
    */
   const handleSignup = async () => {
-    console.log("SIGNUP CLICKED");
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('SIGNUP CLICKED');
+    }
     setIsLoading(true);
     setError(null);
 
     try {
-      console.log('[Signup Page] Starting OAuth signup flow via /api/auth/login');
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Signup Page] Starting OAuth signup flow via /api/auth/login');
+      }
 
       // Redirect to server-side login route
       // Shopify will automatically create account if user is new
       window.location.href = '/api/auth/login';
-      console.log('[Signup Page] Redirected to /api/auth/login');
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('[Signup Page] Redirected to /api/auth/login');
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to initiate signup';
-      console.error('[Signup Page] Signup failed with error:', {
-        error: message,
-        errorType: err instanceof Error ? err.constructor.name : typeof err,
-        fullError: err,
-        timestamp: new Date().toISOString(),
-      });
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[Signup Page] Signup failed with error:', {
+          error: message,
+          errorType: err instanceof Error ? err.constructor.name : typeof err,
+          fullError: err,
+          timestamp: new Date().toISOString(),
+        });
+      }
       setError(message);
       setIsLoading(false);
     }
