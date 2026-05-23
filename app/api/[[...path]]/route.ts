@@ -3,7 +3,6 @@ import {
   getProducts,
   getProductByHandle,
   getCollections,
-  getCustomerOrders,
 } from '@/lib/shopify';
 
 async function handler(
@@ -47,33 +46,6 @@ async function handler(
       }
 
       return NextResponse.json({ product });
-    }
-
-    /* SECURE ORDERS ENDPOINT - FIXED: Now uses cookie + parameterized GraphQL */
-    if (path === 'orders') {
-      // Read token from HTTP-only cookie (only available on server)
-      const token = req.cookies.get('shopify_token')?.value;
-
-      if (!token) {
-        return NextResponse.json(
-          { error: 'Unauthorized - Please login' },
-          { status: 401 }
-        );
-      }
-
-      try {
-        const orders = await getCustomerOrders(token);
-        return NextResponse.json({ orders });
-      } catch (error: any) {
-        // If token is invalid or expired, return 401
-        if (error.message?.includes('Invalid access token')) {
-          return NextResponse.json(
-            { error: 'Token expired - Please login again' },
-            { status: 401 }
-          );
-        }
-        throw error;
-      }
     }
 
     /* FALLBACK */

@@ -50,15 +50,6 @@ export interface Cart {
   totalQuantity: number;
 }
 
-// Authentication & Customer Types
-export interface Customer {
-  id: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
-}
-
 export interface LineItem {
   title: string;
   quantity: number;
@@ -77,16 +68,3 @@ export interface Order {
   currency?: string;
   lineItems: LineItem[];
 }
-
-export interface AuthState {
-  customer: Customer | null;
-  accessToken: string | null;
-  isLoading: boolean;
-  error: string | null;
-}
-
-export type AuthContextType = AuthState & {
-  setToken: (token: string | null, customer: Customer | null) => void;
-  clearToken: () => void;
-  setError: (error: string | null) => void;
-};

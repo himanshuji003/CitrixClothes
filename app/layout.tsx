@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { Inter, Playfair_Display } from 'next/font/google';
 import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
-import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/lib/cart-context';
 import { WishlistProvider } from '@/lib/wishlist-context';
 import Navbar from '@/components/layout/Navbar';
@@ -30,12 +29,12 @@ const OG_IMAGE = 'https://images.unsplash.com/photo-1571908599407-cdb918ed83bf?a
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: 'Citrix Clothes — Premium Fashion Collection', template: '%s — Citrix Clothes' },
-  description: 'Discover premium fashion collection at Citrix Clothes. Shop exclusive designs, track orders, and enjoy secure checkout with Shopify authentication.',
+  description: 'Discover premium fashion collection at Citrix Clothes. Shop exclusive designs and enjoy secure checkout.',
   keywords: ['fashion', 'premium clothing', 'online shopping', 'designer clothes', 'citrix clothes'],
   authors: [{ name: 'Citrix Clothes' }],
   openGraph: {
     title: 'Citrix Clothes — Premium Fashion Collection',
-    description: 'Discover exclusive fashion designs. Sign in to view your orders and enjoy personalized shopping.',
+    description: 'Discover exclusive fashion designs and enjoy personalized shopping.',
     url: SITE_URL,
     siteName: 'Citrix Clothes',
     images: [{ url: OG_IMAGE, width: 1200, height: 800 }],
@@ -63,17 +62,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
       <body className="min-h-screen bg-background text-foreground font-sans antialiased">
-        <AuthProvider>
-          <WishlistProvider>
-            <CartProvider>
-              <Navbar />
-              <main className="min-h-[60vh] pt-[68px] md:pt-[88px]">{children}</main>
-              <Footer />
-              <CartDrawer />
-              <Toaster richColors position="top-center" />
-            </CartProvider>
-          </WishlistProvider>
-        </AuthProvider>
+        <WishlistProvider>
+          <CartProvider>
+            <Navbar />
+            <main className="min-h-[60vh] pt-[68px] md:pt-[88px]">{children}</main>
+            <Footer />
+            <CartDrawer />
+            <Toaster richColors position="top-center" />
+          </CartProvider>
+        </WishlistProvider>
       </body>
     </html>
   );
