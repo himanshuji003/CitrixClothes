@@ -4,7 +4,6 @@ import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
 import { CartProvider } from '@/lib/cart-context';
 import { WishlistProvider } from '@/lib/wishlist-context';
-import { AuthProvider } from '@/context/AuthContext';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import CartDrawer from '@/components/cart/CartDrawer';
@@ -55,7 +54,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'Citrix Clothes' }],
   openGraph: {
-    title: 'Citrix Clothes — Premium Fashion Collection',
+    title: 'Suitique Design — Premium Fashion Collection',
     description:
       'Discover exclusive fashion designs. Sign in to view your orders and enjoy personalized shopping.',
     url: SITE_URL,
@@ -89,19 +88,17 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
       <body className="min-h-screen bg-background text-foreground font-sans antialiased">
-        <AuthProvider>
-          <WishlistProvider>
-            <CartProvider>
-              <Navbar />
-              <main className="min-h-[60vh] pt-[108px] md:pt-[133px]">
-                {children}
-              </main>
-              <Footer />
-              <CartDrawer />
-              <Toaster richColors position="top-center" />
-            </CartProvider>
-          </WishlistProvider>
-        </AuthProvider>
+        <WishlistProvider>
+          <CartProvider>
+            <Navbar />
+            <main className="min-h-[60vh] pt-[108px] md:pt-[133px]">
+              {children}
+            </main>
+            <Footer />
+            <CartDrawer />
+            <Toaster richColors position="top-center" />
+          </CartProvider>
+        </WishlistProvider>
       </body>
     </html>
   );
