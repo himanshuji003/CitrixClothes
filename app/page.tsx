@@ -17,7 +17,14 @@ async function FeaturedCollections() {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
       {collections.map((c) => (
         <Link key={c.handle} href={`/collections/${c.handle}`} className="group relative block aspect-[4/5] overflow-hidden bg-cream-100 rounded-sm">
-          <Image src={c.image} alt={c.title} fill sizes="(max-width: 768px) 100vw, 25vw" className="object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
+          {/* Validate collection image before rendering */}
+          {c.image ? (
+            <img src={c.image} alt={c.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-cream-100 to-cream-200 flex items-center justify-center">
+              <span className="text-sm text-muted-foreground">No Image</span>
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
           <div className="absolute bottom-5 left-5 right-5 text-cream-50">
             <p className="text-[10px] uppercase tracking-[0.28em] opacity-85">{c.tagline}</p>

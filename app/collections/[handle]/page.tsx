@@ -1,5 +1,4 @@
-import { getProducts } from '@/lib/shopify';
-import { COLLECTIONS } from '@/lib/products';
+import { getCollectionByHandle, getCollectionWithProductsByHandle } from '@/lib/shopify';
 import CollectionsView from '@/components/collections/CollectionsView';
 import { notFound } from 'next/navigation';
 
@@ -9,8 +8,11 @@ export async function generateMetadata({
   params: Promise<{ handle: string }> 
 }) {
   const { handle } = await params;
-  const c = COLLECTIONS.find((x) => x.handle === handle);
-  return { title: c?.title || 'Collection', description: `Shop ${c?.title || 'this collection'} — ${c?.tagline || 'Suitique Designs'}.` };
+  const collection = await getCollectionByHandle(handle);
+  return { 
+    title: collection?.title || 'Collection', 
+    description: `Shop ${collection?.title || 'this collection'} — ${collection?.tagline || 'Suitique Designs'}.` 
+  };
 }
 
 export default async function CollectionHandlePage({ 
@@ -19,9 +21,31 @@ export default async function CollectionHandlePage({
   params: Promise<{ handle: string }> 
 }) {
   const { handle } = await params;
-  const all = await getProducts();
-  const collection = COLLECTIONS.find((c) => c.handle === handle);
-  if (!collection && handle !== 'all') return notFound();
-  const filtered = handle === 'all' ? all : all.filter((p) => p.collection === handle);
-  return <CollectionsView products={filtered} initialCollection={handle} title={collection?.title || 'Collection'} tagline={collection?.tagline} />;
+  
+  console.log(`\n=== CollectionHandlePage ===`);
+  console.log('Requested handle:', handle);
+  
+  // Fetch collection with products from Shopify (with mock fallback)
+  const { collection, products } = await getCollectionWithProductsByHandle(handle);
+  
+  console.log('Collection found:', !!collection);
+  console.log('Products fetched:', products.length);
+  
+  // Return 404 ONLY if collection doesn't exist
+  // Empty products is NOT an error - show "No products found" message instead
+  if (!collection && handle !== 'all') {
+    console.log(`Collection "${handle}" not found - returning 404`);
+    return notFound();
+  }
+  
+  console.log(`=== End CollectionHandlePage ===\n`);
+  
+  return (
+    <CollectionsView 
+      products={products} 
+      initialCollection={handle} 
+      title={collection?.title || 'Collection'}
+      tagline={collection?.tagline}
+    />
+  );
 }

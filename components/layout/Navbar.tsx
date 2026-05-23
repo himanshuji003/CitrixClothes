@@ -2,18 +2,14 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { Menu, Search, ShoppingBag, X, Heart, LogOut, User } from 'lucide-react';
+import { Menu, Search, ShoppingBag, X, Heart } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { useCart } from '@/lib/cart-context';
 import { useWishlist } from '@/lib/wishlist-context';
-import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 import SearchDialog from '@/components/search/SearchDialog';
 
-// ✅ PHASE 2: OAuth Authentication
-// Users now redirect to /login and /signup pages which initiate OAuth flow
-// import { ShopifyLoginButton } from '@/components/auth/ShopifyLoginButton';
-// import { ShopifySignupButton } from '@/components/auth/ShopifySignupButton';
+
 
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_refined-retail-1/artifacts/7sv48thr_image.png';
 
@@ -31,7 +27,6 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const { count, setOpen: setCartOpen } = useCart();
   const { count: wishCount } = useWishlist();
-  const { user, isAuthenticated, isLoading, logout } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -67,33 +62,6 @@ export default function Navbar() {
                         <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="font-serif text-2xl py-3 text-brand-900 border-b border-border/50 last:border-0 hover:text-brand-500 transition-colors">{l.label}</Link>
                       ))}
                       <Link href="/wishlist" onClick={() => setOpen(false)} className="font-serif text-2xl py-3 text-brand-900 border-b border-border/50 hover:text-brand-500 transition-colors">Wishlist</Link>
-                      
-                      {/* Mobile Auth Section - OAuth */}
-                      <div className="border-t border-border/50 mt-6 pt-6 flex flex-col gap-3">
-                        {isLoading ? (
-                          <div className="h-10 bg-cream-200 rounded animate-pulse" />
-                        ) : isAuthenticated && user ? (
-                          <>
-                            <Link href="/account" onClick={() => setOpen(false)} className="w-full px-4 py-2 text-center text-sm uppercase tracking-[0.18em] text-brand-900 border border-brand-900 rounded hover:bg-brand-900 hover:text-cream-50 transition-colors flex items-center justify-center gap-2">
-                              <User className="h-4 w-4" />
-                              {user.firstName || 'Account'}
-                            </Link>
-                            <button onClick={async () => { await logout(); setOpen(false); }} disabled={isLoading} className="w-full px-4 py-2 text-center text-sm uppercase tracking-[0.18em] text-red-600 border border-red-600 rounded hover:bg-red-600 hover:text-cream-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                              <LogOut className="h-4 w-4" />
-                              Logout
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <Link href="/login" onClick={() => setOpen(false)} className="w-full px-4 py-2 text-center text-sm uppercase tracking-[0.18em] text-brand-900 border border-brand-900 rounded hover:bg-brand-900 hover:text-cream-50 transition-colors">
-                              Login
-                            </Link>
-                            <Link href="/signup" onClick={() => setOpen(false)} className="w-full px-4 py-2 text-center text-sm uppercase tracking-[0.18em] text-cream-50 bg-brand-700 rounded hover:bg-brand-900 transition-colors">
-                              Sign Up
-                            </Link>
-                          </>
-                        )}
-                      </div>
                     </nav>
                     <div className="mt-auto px-6 py-6 text-xs uppercase tracking-[0.25em] text-muted-foreground">Suitique Designs · Luxe Collection</div>
                   </div>
@@ -130,31 +98,7 @@ export default function Navbar() {
                 {count > 0 && <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-700 text-cream-50 text-[10px] font-medium flex items-center justify-center">{count}</span>}
               </button>
 
-              {/* Desktop Auth Buttons - OAuth */}
-              <div className="hidden md:flex items-center gap-2 ml-2">
-                {isLoading ? (
-                  <div className="h-8 w-24 bg-cream-200 rounded animate-pulse" />
-                ) : isAuthenticated && user ? (
-                  <>
-                    <Link href="/account" className="px-4 py-1 text-xs uppercase tracking-[0.18em] text-brand-900 border border-brand-900 rounded hover:bg-brand-900 hover:text-cream-50 transition-colors flex items-center gap-1">
-                      <User className="h-4 w-4" />
-                      {user.firstName || 'Account'}
-                    </Link>
-                    <button onClick={logout} disabled={isLoading} className="px-3 py-1 text-xs text-red-600 hover:text-red-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Logout">
-                      <LogOut className="h-4 w-4" />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link href="/login" className="px-4 py-1 text-xs uppercase tracking-[0.18em] text-brand-900 border border-brand-900 rounded hover:bg-brand-900 hover:text-cream-50 transition-colors">
-                      Login
-                    </Link>
-                    <Link href="/signup" className="px-4 py-1 text-xs uppercase tracking-[0.18em] text-cream-50 bg-brand-700 rounded hover:bg-brand-900 transition-colors">
-                      Sign Up
-                    </Link>
-                  </>
-                )}
-              </div>
+
             </div>
           </div>
         </div>

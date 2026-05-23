@@ -40,16 +40,24 @@ export default function ProductDetail({ product, related }: Props) {
         <div className="grid md:grid-cols-2 gap-6 md:gap-12 lg:gap-16">
           <div>
             <div className="relative aspect-[3/4] bg-cream-100 overflow-hidden rounded-sm">
-              <motion.div key={activeImg} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="absolute inset-0">
-                <Image src={product.images[activeImg]} alt={product.title} fill priority sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
-              </motion.div>
+              {product.images && product.images.length > 0 ? (
+                <motion.div key={activeImg} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="absolute inset-0">
+                  <Image src={product.images[activeImg]} alt={product.title} fill priority sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" />
+                </motion.div>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-muted-foreground">No Image Available</span>
+                </div>
+              )}
             </div>
-            {product.images.length > 1 && (
+            {product.images && product.images.length > 1 && (
               <div className="mt-3 grid grid-cols-4 gap-2 md:gap-3">
                 {product.images.map((img, i) => (
-                  <button key={i} onClick={() => setActiveImg(i)} aria-label={`View image ${i + 1}`} className={`relative aspect-[3/4] overflow-hidden rounded-sm bg-cream-100 ${i === activeImg ? 'ring-2 ring-brand-700' : 'ring-1 ring-border hover:ring-brand-300'}`}>
-                    <Image src={img} alt={`thumb-${i}`} fill sizes="15vw" className="object-cover" />
-                  </button>
+                  img && (
+                    <button key={i} onClick={() => setActiveImg(i)} aria-label={`View image ${i + 1}`} className={`relative aspect-[3/4] overflow-hidden rounded-sm bg-cream-100 ${i === activeImg ? 'ring-2 ring-brand-700' : 'ring-1 ring-border hover:ring-brand-300'}`}>
+                      <Image src={img} alt={`thumb-${i}`} fill sizes="15vw" className="object-cover" />
+                    </button>
+                  )
                 ))}
               </div>
             )}

@@ -12,7 +12,10 @@ interface ProductCardProps { product: Product; index?: number; priority?: boolea
 export default function ProductCard({ product, index = 0, priority = false }: ProductCardProps) {
   const { has, toggle, hydrated } = useWishlist();
   const wished = hydrated && has(product.handle);
-  const [first, second] = product.images;
+  const [first, second] = product.images || [];
+  
+  // Skip rendering if no images available
+  if (!first) return null;
 
   return (
     <motion.div
