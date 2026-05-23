@@ -38,7 +38,8 @@ async function shopifyFetch<T = any>({
       'X-Shopify-Storefront-Access-Token': TOKEN as string,
     },
     body: JSON.stringify({ query, variables }),
-    next: { revalidate: 3600 },
+    // ISR revalidation: 60 seconds to auto-update Shopify products without redeploy
+    next: { revalidate: 60 },
   });
 
   const json = await res.json();

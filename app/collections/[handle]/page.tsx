@@ -2,6 +2,11 @@ import { getCollectionByHandle, getCollectionWithProductsByHandle } from '@/lib/
 import CollectionsView from '@/components/collections/CollectionsView';
 import { notFound } from 'next/navigation';
 
+// ISR every 60 seconds: revalidates product list to show latest items in collection
+export const revalidate = 60;
+// dynamicParams=true allows new collection pages to render without 404
+export const dynamicParams = true;
+
 export async function generateMetadata({ 
   params 
 }: { 
