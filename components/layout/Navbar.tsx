@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/sheet';
 import { useCart } from '@/lib/cart-context';
 import { useWishlist } from '@/lib/wishlist-context';
+import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/lib/utils';
 import SearchDialog from '@/components/search/SearchDialog';
 import TopInfoBar from '@/components/layout/TopInfoBar';
@@ -35,6 +36,7 @@ export default function Navbar() {
 
   const { count, setOpen: setCartOpen } = useCart();
   const { count: wishCount } = useWishlist();
+  const { isLoading, isAuthenticated, user, logout } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);

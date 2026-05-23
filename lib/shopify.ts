@@ -219,6 +219,150 @@ export async function getCollections(): Promise<Collection[]> {
   }
 }
 
+/**
+ * Fetch a single collection by handle (returns collection metadata only)
+ * Used for generating page metadata in generateMetadata()
+ */
+export async function getCollectionByHandle(
+  handle: string
+): Promise<Collection | null> {
+  console.log('[getCollectionByHandle] Fetching collection metadata', {
+    handle,
+    shopifyConfigured: isShopifyConfigured(),
+  });
+
+  if (!isShopifyConfigured()) {
+    console.log('[getCollectionByHandle] Shopify not configured, searching mock data');
+    const mock = COLLECTIONS.find((c) => c.handle === handle);
+    console.log('[getCollectionByHandle] Mock result', { found: !!mock, handle });
+    return mock || null;
+  }
+
+  try {
+    const data = await shopifyFetch<{
+      collectionByHandle: {
+        id: string;
+        handle: string;
+        title: string;
+        description: string;
+        image: { url: string; altText: string } | null;
+      } | null;
+    }>({
+      query: COLLECTION_BY_HANDLE_QUERY,
+      variables: { handle },
+    });
+
+    if (!data.collectionByHandle) {
+      console.warn('[getCollectionByHandle] Collection not found in Shopify', { handle });
+      return null;
+    }
+
+    const collection: Collection = {
+      handle: data.collectionByHandle.handle,
+      title: data.collectionByHandle.title,
+      image: data.collectionByHandle.image?.url || '',
+      tagline: data.collectionByHandle.description?.slice(0, 60) || '',
+    };
+
+    console.log('[getCollectionByHandle] Successfully fetched from Shopify', {
+      handle: collection.handle,
+      title: collection.title,
+    });
+
+    return collection;
+  } catch (error) {
+    console.error('[getCollectionByHandle] Shopify fetch failed, falling back to mock', {
+      error: error instanceof Error ? error.message : String(error),
+      handle,
+    });
+
+    const mock = COLLECTIONS.find((c) => c.handle === handle);
+    return mock || null;
+  }
+}
+
+/**
+ * Fetch a collection with all its products by handle
+ * Returns both collection metadata and products array
+ * Used for rendering collection pages
+ */
+export async function getCollectionWithProductsByHandle(
+  handle: string
+): Promise<{ collection: Collection | null; products: Product[] }> {
+  console.log('[getCollectionWithProductsByHandle] Fetching collection and products', {
+    handle,
+    shopifyConfigured: isShopifyConfigured(),
+  });
+
+  if (!isShopifyConfigured()) {
+    console.log('[getCollectionWithProductsByHandle] Shopify not configured, using mock data');
+    const mockCollection = COLLECTIONS.find((c) => c.handle === handle);
+    const mockProducts = PRODUCTS.filter(
+      (p) => p.collection === handle || handle === 'all'
+    );
+
+    return {
+      collection: mockCollection || null,
+      products: mockProducts,
+    };
+  }
+
+  try {
+    const data = await shopifyFetch<{
+      collectionByHandle: {
+        id: string;
+        handle: string;
+        title: string;
+        description: string;
+        image: { url: string; altText: string } | null;
+        products: { edges: { node: any }[] };
+      } | null;
+    }>({
+      query: COLLECTION_BY_HANDLE_QUERY,
+      variables: { handle },
+    });
+
+    if (!data.collectionByHandle) {
+      console.warn('[getCollectionWithProductsByHandle] Collection not found', { handle });
+      return { collection: null, products: [] };
+    }
+
+    const collection: Collection = {
+      handle: data.collectionByHandle.handle,
+      title: data.collectionByHandle.title,
+      image: data.collectionByHandle.image?.url || '',
+      tagline: data.collectionByHandle.description?.slice(0, 60) || '',
+    };
+
+    const products = (data.collectionByHandle.products?.edges || [])
+      .map((e) => normalizeShopifyProduct(e.node))
+      .filter(Boolean) as Product[];
+
+    console.log('[getCollectionWithProductsByHandle] Successfully fetched from Shopify', {
+      handle: collection.handle,
+      title: collection.title,
+      productCount: products.length,
+    });
+
+    return { collection, products };
+  } catch (error) {
+    console.error('[getCollectionWithProductsByHandle] Shopify fetch failed, falling back to mock', {
+      error: error instanceof Error ? error.message : String(error),
+      handle,
+    });
+
+    const mockCollection = COLLECTIONS.find((c) => c.handle === handle);
+    const mockProducts = PRODUCTS.filter(
+      (p) => p.collection === handle || handle === 'all'
+    );
+
+    return {
+      collection: mockCollection || null,
+      products: mockProducts,
+    };
+  }
+}
+
 /* ---------------- HERO SECTION ---------------- */
 
 /**
