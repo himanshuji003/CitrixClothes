@@ -23,7 +23,22 @@ export default function ProductDetail({ product, related }: Props) {
   const [activeImg, setActiveImg] = useState(0);
 
   const onAdd = () => {
-    if (!size && product.sizes.length > 1) { toast.error('Please select a size'); return; }
+    console.log('[ProductDetail] onAdd: About to add product to cart', {
+      productHandle: product.handle,
+      productTitle: product.title,
+      selectedSize: size,
+      productSizes: product.sizes,
+      variantsArray: product.variants,
+      variantCount: product.variants?.length,
+      variantIds: product.variants?.map((v: any) => v.id),
+      fullProduct: JSON.stringify(product, null, 2),
+    });
+    
+    if (!size && product.sizes.length > 1) {
+      toast.error('Please select a size');
+      return;
+    }
+    
     addItem(product, size, 1);
     toast.success('Added to bag');
   };

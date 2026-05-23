@@ -86,3 +86,16 @@ export const CART_LINES_REMOVE_MUTATION = /* GraphQL */ `
     }
   }
 `;
+
+export const HERO_METAOBJECT_QUERY = /* GraphQL */ `
+  query HeroMetaobject {
+    metaobject(handle: { handle: "hero-section", type: "hero_section" }) {
+      id
+      type
+      fields {
+        key
+        value
+      }
+    }
+  }
+`;

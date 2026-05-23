@@ -11,6 +11,7 @@ import {
   CART_LINES_ADD_MUTATION,
   CART_LINES_UPDATE_MUTATION,
   CART_LINES_REMOVE_MUTATION,
+  HERO_METAOBJECT_QUERY,
 } from './queries';
 
 import type { Cart, CartLineInput, Collection, Product } from '@/types';
@@ -61,7 +62,7 @@ function normalizeShopifyProduct(p: any): Product | null {
     )
   ) as string[];
 
-  return {
+  const product: Product = {
     handle: p.handle,
     title: p.title,
     description: p.description,
@@ -71,17 +72,58 @@ function normalizeShopifyProduct(p: any): Product | null {
       : null,
     currency: p.priceRange?.minVariantPrice?.currencyCode || 'INR',
     images: (p.images?.edges || []).map((e: any) => e.node.url),
-    sizes,
-    variants,
+    sizes: sizes.length > 0 ? sizes : ['Free Size'], // Default to Free Size if no sizes found
+    variants: variants.length > 0 ? variants : [], // Ensure variants is always an array
     tag: (p.tags || [])[0] || null,
   };
+
+  console.log('[normalizeShopifyProduct] Normalized product', {
+    handle: product.handle,
+    title: product.title,
+    variantCount: product.variants.length,
+    sizes: product.sizes,
+    variantIds: product.variants.map((v: any) => v.id),
+  });
+
+  return product;
 }
 
+/**
+ * Find a variant by size, with fallback for single-variant products.
+ * For single-variant products, automatically uses the first variant's ID.
+ * For multi-variant products, matches by size selectedOption.
+ */
 export function findVariantBySize(
   variants: any[] | undefined,
   selectedSize: string | null
 ): string | null {
-  if (!selectedSize || !variants || variants.length === 0) return null;
+  console.log('[findVariantBySize] Called with', {
+    variantsArray: variants,
+    variantCount: variants?.length,
+    selectedSize,
+    variantIds: variants?.map((v: any) => v.id),
+  });
+
+  if (!variants || variants.length === 0) {
+    console.warn('[findVariantBySize] No variants available');
+    return null;
+  }
+
+  // For single-variant products, always use the first variant
+  if (variants.length === 1) {
+    const variantId = variants[0]?.id;
+    console.log('[findVariantBySize] Single variant product, using first variant', {
+      variantId,
+      variantObject: variants[0],
+    });
+    return variantId || null;
+  }
+
+  // For multi-variant products, find by size
+  if (!selectedSize) {
+    console.warn('[findVariantBySize] No size selected for multi-variant product');
+    return null;
+  }
 
   const variant = variants.find((v) => {
     const sizeOption = (v.selectedOptions || []).find(
@@ -90,7 +132,14 @@ export function findVariantBySize(
     return sizeOption?.value === selectedSize;
   });
 
-  return variant?.id || null;
+  const result = variant?.id || null;
+  console.log('[findVariantBySize] Result for multi-variant', {
+    selectedSize,
+    foundVariant: variant,
+    variantId: result,
+  });
+
+  return result;
 }
 
 /* ---------------- PRODUCTS ---------------- */
@@ -114,8 +163,18 @@ export async function getProducts(): Promise<Product[]> {
 export async function getProductByHandle(
   handle: string
 ): Promise<Product | null> {
-  if (!isShopifyConfigured())
-    return PRODUCTS.find((p) => p.handle === handle) || null;
+  console.log('[getProductByHandle] Fetching product', { handle, shopifyConfigured: isShopifyConfigured() });
+
+  if (!isShopifyConfigured()) {
+    console.log('[getProductByHandle] Shopify not configured, using mock data');
+    const mock = PRODUCTS.find((p) => p.handle === handle);
+    console.log('[getProductByHandle] Mock product result', {
+      found: !!mock,
+      handle: mock?.handle,
+      variants: mock?.variants?.length,
+    });
+    return mock || null;
+  }
 
   try {
     const data = await shopifyFetch<{ productByHandle: any }>({
@@ -123,9 +182,20 @@ export async function getProductByHandle(
       variables: { handle },
     });
 
-    return normalizeShopifyProduct(data.productByHandle);
-  } catch {
-    return PRODUCTS.find((p) => p.handle === handle) || null;
+    console.log('[getProductByHandle] Shopify fetch succeeded, normalizing...');
+    const product = normalizeShopifyProduct(data.productByHandle);
+    console.log('[getProductByHandle] Shopify product normalized', {
+      handle: product?.handle,
+      variants: product?.variants?.length,
+    });
+    return product;
+  } catch (error) {
+    console.error('[getProductByHandle] Shopify fetch failed, falling back to mock', {
+      error: error instanceof Error ? error.message : String(error),
+      handle,
+    });
+    const mock = PRODUCTS.find((p) => p.handle === handle);
+    return mock || null;
   }
 }
 
@@ -148,124 +218,62 @@ export async function getCollections(): Promise<Collection[]> {
   }
 }
 
-export async function getCollectionByHandle(
-  handle: string
-): Promise<Collection | null> {
-  console.log('Collection Handle:', handle);
-  
-  if (!isShopifyConfigured()) {
-    const mockCollection = COLLECTIONS.find((c) => c.handle === handle);
-    console.log('Using mock data - Collection found:', !!mockCollection);
-    return mockCollection || null;
-  }
+/* ---------------- HERO SECTION ---------------- */
+
+/**
+ * Fetch hero section data from Shopify metaobject
+ * Returns null if Shopify not configured or metaobject doesn't exist
+ */
+export async function getHeroMetaobject(): Promise<Record<string, string> | null> {
+  if (!isShopifyConfigured()) return null;
 
   try {
-    const data = await shopifyFetch<{ collectionByHandle: any }>({
-      query: COLLECTION_BY_HANDLE_QUERY,
-      variables: { handle },
+    const data = await shopifyFetch<{
+      metaobject: {
+        id: string;
+        type: string;
+        fields: Array<{ key: string; value: string }>;
+      } | null;
+    }>({
+      query: HERO_METAOBJECT_QUERY,
     });
 
-    console.log('Shopify Response:', data);
-
-    if (!data.collectionByHandle) {
-      console.log('Collection not found in Shopify');
+    if (!data.metaobject) {
+      console.warn('[HeroMetaobject] Metaobject not found in Shopify');
       return null;
     }
 
-    const collection: Collection = {
-      handle: data.collectionByHandle.handle,
-      title: data.collectionByHandle.title,
-      image: data.collectionByHandle.image?.url || '',
-      tagline: data.collectionByHandle.description?.slice(0, 40) || '',
-    };
-
-    console.log('Returning collection:', collection);
-    return collection;
-  } catch (error) {
-    console.error('Error fetching collection from Shopify:', error);
-    // Fallback to mock data
-    const mockCollection = COLLECTIONS.find((c) => c.handle === handle);
-    console.log('Fallback to mock - Collection found:', !!mockCollection);
-    return mockCollection || null;
-  }
-}
-
-export async function getCollectionWithProductsByHandle(
-  handle: string
-): Promise<{ collection: Collection | null; products: Product[] }> {
-  console.log('\n=== getCollectionWithProductsByHandle ===');
-  console.log('Requested handle:', handle);
-  
-  if (!isShopifyConfigured()) {
-    console.log('Shopify not configured - using mock data');
-    const mockCollection = COLLECTIONS.find((c) => c.handle === handle);
-    console.log('Mock collection found:', !!mockCollection);
-    
-    if (!mockCollection) {
-      console.log('Mock collection not found, returning empty');
-      return { collection: null, products: [] };
-    }
-    
-    // For mock data, filter products by collection property
-    const mockProducts = PRODUCTS.filter((p) => p.collection === handle);
-    console.log(`Mock products for "${handle}":`, mockProducts.length);
-    return { collection: mockCollection, products: mockProducts };
-  }
-
-  try {
-    const data = await shopifyFetch<{ collectionByHandle: any }>({
-      query: COLLECTION_BY_HANDLE_QUERY,
-      variables: { handle },
+    // Convert fields array to object
+    const heroData: Record<string, string> = {};
+    data.metaobject.fields.forEach((field) => {
+      heroData[field.key] = field.value;
     });
 
-    console.log('Shopify response received');
-    
-    if (!data.collectionByHandle) {
-      console.log('Collection not found in Shopify');
-      return { collection: null, products: [] };
-    }
+    console.log('[HeroMetaobject] Successfully fetched from Shopify', {
+      keys: Object.keys(heroData),
+    });
 
-    const shopifyCollection = data.collectionByHandle;
-    console.log('Collection title:', shopifyCollection.title);
-    console.log('Collection products.edges.length:', shopifyCollection.products?.edges?.length || 0);
-
-    const collection: Collection = {
-      handle: shopifyCollection.handle,
-      title: shopifyCollection.title,
-      image: shopifyCollection.image?.url || '',
-      tagline: shopifyCollection.description?.slice(0, 40) || '',
-    };
-
-    // Normalize products from collection response
-    const products = (shopifyCollection.products?.edges || [])
-      .map((e: any) => normalizeShopifyProduct(e.node))
-      .filter(Boolean) as Product[];
-
-    console.log('Normalized products count:', products.length);
-    console.log('=== End getCollectionWithProductsByHandle ===\n');
-
-    return { collection, products };
+    return heroData;
   } catch (error) {
-    console.error('Error fetching collection with products:', error);
-    
-    // Fallback to mock data
-    const mockCollection = COLLECTIONS.find((c) => c.handle === handle);
-    console.log('Fallback: Mock collection found:', !!mockCollection);
-    
-    if (!mockCollection) {
-      return { collection: null, products: [] };
-    }
-    
-    const mockProducts = PRODUCTS.filter((p) => p.collection === handle);
-    console.log(`Fallback: Mock products for "${handle}":`, mockProducts.length);
-    return { collection: mockCollection, products: mockProducts };
+    console.warn('[HeroMetaobject] Failed to fetch from Shopify', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
   }
 }
 
-/* ---------------- CART ---------------- */
-
 export async function createCart(lines: CartLineInput[]): Promise<Cart> {
+  console.log('[Shopify] createCart: Received lines', {
+    lineCount: lines.length,
+    lines: lines.map((l) => ({
+      merchandiseId: l.merchandiseId,
+      quantity: l.quantity,
+      merchandiseIdType: typeof l.merchandiseId,
+    })),
+  });
+
   if (!isShopifyConfigured()) {
+    console.warn('[Shopify] createCart: Shopify not configured, returning mock cart');
     return {
       id: 'mock-cart',
       checkoutUrl: '#mock-checkout',
@@ -273,14 +281,27 @@ export async function createCart(lines: CartLineInput[]): Promise<Cart> {
     };
   }
 
-  const data = await shopifyFetch<{
-    cartCreate: { cart: Cart };
-  }>({
-    query: CART_CREATE_MUTATION,
-    variables: { lines },
-  });
+  try {
+    const data = await shopifyFetch<{
+      cartCreate: { cart: Cart };
+    }>({
+      query: CART_CREATE_MUTATION,
+      variables: { lines },
+    });
 
-  return data.cartCreate.cart;
+    console.log('[Shopify] createCart: Success', {
+      cartId: data.cartCreate.cart.id,
+      checkoutUrl: data.cartCreate.cart.checkoutUrl,
+    });
+
+    return data.cartCreate.cart;
+  } catch (error) {
+    console.error('[Shopify] createCart: Failed', {
+      error: error instanceof Error ? error.message : String(error),
+      lines,
+    });
+    throw error;
+  }
 }
 
 export async function addToCart(
@@ -297,3 +318,333 @@ export async function addToCart(
 
   return data.cartLinesAdd.cart;
 }
+
+/* AUTH - FIXED: Parameterized GraphQL (no string interpolation) */
+
+export async function customerLogin(email: string, password: string) {
+  if (!isShopifyConfigured()) {
+    throw new Error('Shopify not configured');
+  }
+
+  const query = `
+    mutation customerAccessTokenCreate($input: CustomerAccessTokenCreateInput!) {
+      customerAccessTokenCreate(input: $input) {
+        customerAccessToken {
+          accessToken
+        }
+        customerUserErrors {
+          message
+        }
+      }
+    }
+  `;
+
+  const data = await shopifyFetch<any>({
+    query,
+    variables: {
+      input: { email, password },
+    },
+  });
+
+  return data.customerAccessTokenCreate;
+}
+
+export async function getCustomerProfile(token: string) {
+  if (!isShopifyConfigured()) return null;
+
+  const query = `
+    query GetCustomer($token: String!) {
+      customer(customerAccessToken: $token) {
+        id
+        email
+        firstName
+        lastName
+        phone
+      }
+    }
+  `;
+
+  try {
+    const data = await shopifyFetch<any>({
+      query,
+      variables: { token },
+    });
+
+    const customer = data.customer;
+    return {
+      id: customer.id,
+      email: customer.email,
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+      phone: customer.phone,
+    };
+  } catch (error) {
+    console.error('Error fetching customer profile:', error);
+    return null;
+  }
+}
+
+/* ORDERS - FIXED: Parameterized GraphQL (no string interpolation) */
+
+export async function getCustomerOrders(token: string) {
+  if (!isShopifyConfigured()) {
+    return [];
+  }
+
+  const query = `
+    query GetCustomerOrders($token: String!) {
+      customer(customerAccessToken: $token) {
+        orders(first: 10) {
+          edges {
+            node {
+              id
+              orderNumber
+              processedAt
+              fulfillmentStatus
+              totalPriceSet {
+                shopMoney {
+                  amount
+                  currencyCode
+                }
+              }
+              lineItems(first: 5) {
+                edges {
+                  node {
+                    title
+                    quantity
+                    variant {
+                      priceV2 {
+                        amount
+                        currencyCode
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  try {
+    const data = await shopifyFetch<any>({
+      query,
+      variables: { token },
+    });
+
+    return (data.customer?.orders?.edges || []).map((e: any) => {
+      const order = e.node;
+      const totalPrice = parseFloat(order.totalPriceSet?.shopMoney?.amount || '0');
+      const currency = order.totalPriceSet?.shopMoney?.currencyCode || 'USD';
+
+      return {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        processedAt: order.processedAt,
+        fulfillmentStatus: order.fulfillmentStatus || 'UNFULFILLED',
+        totalPrice: Math.round(totalPrice * 100) / 100,
+        currency: currency,
+        lineItems: (order.lineItems?.edges || []).map((item: any) => ({
+          title: item.node.title,
+          quantity: item.node.quantity,
+          price: parseFloat(item.node.variant?.priceV2?.amount || '0'),
+        })),
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    throw error;
+  }
+}
+
+/* SIGNUP - Create new customer account */
+
+export async function customerCreate(
+  email: string,
+  password: string,
+  firstName: string,
+  lastName: string
+) {
+  if (!isShopifyConfigured()) {
+    throw new Error('Shopify not configured');
+  }
+
+  const query = `
+    mutation customerCreate($input: CustomerCreateInput!) {
+      customerCreate(input: $input) {
+        customer {
+          id
+          email
+          firstName
+          lastName
+        }
+        customerUserErrors {
+          code
+          message
+          field
+        }
+      }
+    }
+  `;
+
+  const data = await shopifyFetch<any>({
+    query,
+    variables: {
+      input: {
+        email,
+        password,
+        firstName,
+        lastName,
+      },
+    },
+  });
+
+  return data.customerCreate;
+}
+
+/* PROFILE UPDATE - Update customer information */
+
+export async function customerUpdate(
+  token: string,
+  input: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    email?: string;
+  }
+) {
+  if (!isShopifyConfigured()) {
+    throw new Error('Shopify not configured');
+  }
+
+  const query = `
+    mutation customerUpdate($customerAccessToken: String!, $customer: CustomerUpdateInput!) {
+      customerUpdate(customerAccessToken: $customerAccessToken, customer: $customer) {
+        customer {
+          id
+          email
+          firstName
+          lastName
+          phone
+        }
+        customerUserErrors {
+          code
+          message
+          field
+        }
+      }
+    }
+  `;
+
+  const data = await shopifyFetch<any>({
+    query,
+    variables: {
+      customerAccessToken: token,
+      customer: input,
+    },
+  });
+
+  return data.customerUpdate;
+}
+
+/* PASSWORD UPDATE - Change customer password */
+
+export async function updateCustomerPassword(
+  token: string,
+  oldPassword: string,
+  newPassword: string
+) {
+  if (!isShopifyConfigured()) {
+    throw new Error('Shopify not configured');
+  }
+
+  const query = `
+    mutation updateCustomerPassword($customerAccessToken: String!, $newPassword: String!) {
+      customerUpdate(customerAccessToken: $customerAccessToken, customer: {password: $newPassword}) {
+        customer {
+          id
+          email
+        }
+        customerUserErrors {
+          code
+          message
+        }
+      }
+    }
+  `;
+
+  const data = await shopifyFetch<any>({
+    query,
+    variables: {
+      customerAccessToken: token,
+      newPassword,
+    },
+  });
+
+  return data.customerUpdate;
+}
+
+/* ============================================= */
+/* CUSTOMER ACCOUNT API - Profile Management    */
+/* Used in /api/account/* endpoints             */
+/* ============================================= */
+
+/**
+ * GraphQL Query to fetch customer with metafields
+ * Used by GET /api/account/profile-status
+ * Customer Account API v2026-04
+ */
+export const GET_CUSTOMER_WITH_METAFIELDS_QUERY = `
+  query GetCustomerWithMetafields {
+    customer {
+      id
+      displayName
+      firstName
+      lastName
+      emailAddress {
+        emailAddress
+      }
+      phoneNumber {
+        phoneNumber
+      }
+      metafields(first: 10, namespace: "custom") {
+        edges {
+          node {
+            key
+            value
+          }
+        }
+      }
+    }
+  }
+`;
+
+/**
+ * GraphQL Mutation to set customer metafields
+ * Used by POST /api/account/complete-profile
+ * Customer Account API v2026-04
+ * 
+ * Saves profile data:
+ * - custom.full_name: string
+ * - custom.mobile_number: string
+ * - custom.age: number
+ * - custom.gender: string
+ */
+export const SET_CUSTOMER_METAFIELDS_MUTATION = `
+  mutation SetCustomerMetafields($input: MetafieldsSetInput!) {
+    metafieldsSet(input: $input) {
+      metafields {
+        key
+        namespace
+        value
+      }
+      userErrors {
+        field
+        message
+        code
+      }
+    }
+  }
+`;
