@@ -6,6 +6,7 @@ import {
   PRODUCTS_QUERY,
   PRODUCT_BY_HANDLE_QUERY,
   COLLECTIONS_QUERY,
+  COLLECTION_BY_HANDLE_QUERY,
   CART_CREATE_MUTATION,
   CART_LINES_ADD_MUTATION,
   CART_LINES_UPDATE_MUTATION,
@@ -144,6 +145,120 @@ export async function getCollections(): Promise<Collection[]> {
     }));
   } catch {
     return COLLECTIONS;
+  }
+}
+
+export async function getCollectionByHandle(
+  handle: string
+): Promise<Collection | null> {
+  console.log('Collection Handle:', handle);
+  
+  if (!isShopifyConfigured()) {
+    const mockCollection = COLLECTIONS.find((c) => c.handle === handle);
+    console.log('Using mock data - Collection found:', !!mockCollection);
+    return mockCollection || null;
+  }
+
+  try {
+    const data = await shopifyFetch<{ collectionByHandle: any }>({
+      query: COLLECTION_BY_HANDLE_QUERY,
+      variables: { handle },
+    });
+
+    console.log('Shopify Response:', data);
+
+    if (!data.collectionByHandle) {
+      console.log('Collection not found in Shopify');
+      return null;
+    }
+
+    const collection: Collection = {
+      handle: data.collectionByHandle.handle,
+      title: data.collectionByHandle.title,
+      image: data.collectionByHandle.image?.url || '',
+      tagline: data.collectionByHandle.description?.slice(0, 40) || '',
+    };
+
+    console.log('Returning collection:', collection);
+    return collection;
+  } catch (error) {
+    console.error('Error fetching collection from Shopify:', error);
+    // Fallback to mock data
+    const mockCollection = COLLECTIONS.find((c) => c.handle === handle);
+    console.log('Fallback to mock - Collection found:', !!mockCollection);
+    return mockCollection || null;
+  }
+}
+
+export async function getCollectionWithProductsByHandle(
+  handle: string
+): Promise<{ collection: Collection | null; products: Product[] }> {
+  console.log('\n=== getCollectionWithProductsByHandle ===');
+  console.log('Requested handle:', handle);
+  
+  if (!isShopifyConfigured()) {
+    console.log('Shopify not configured - using mock data');
+    const mockCollection = COLLECTIONS.find((c) => c.handle === handle);
+    console.log('Mock collection found:', !!mockCollection);
+    
+    if (!mockCollection) {
+      console.log('Mock collection not found, returning empty');
+      return { collection: null, products: [] };
+    }
+    
+    // For mock data, filter products by collection property
+    const mockProducts = PRODUCTS.filter((p) => p.collection === handle);
+    console.log(`Mock products for "${handle}":`, mockProducts.length);
+    return { collection: mockCollection, products: mockProducts };
+  }
+
+  try {
+    const data = await shopifyFetch<{ collectionByHandle: any }>({
+      query: COLLECTION_BY_HANDLE_QUERY,
+      variables: { handle },
+    });
+
+    console.log('Shopify response received');
+    
+    if (!data.collectionByHandle) {
+      console.log('Collection not found in Shopify');
+      return { collection: null, products: [] };
+    }
+
+    const shopifyCollection = data.collectionByHandle;
+    console.log('Collection title:', shopifyCollection.title);
+    console.log('Collection products.edges.length:', shopifyCollection.products?.edges?.length || 0);
+
+    const collection: Collection = {
+      handle: shopifyCollection.handle,
+      title: shopifyCollection.title,
+      image: shopifyCollection.image?.url || '',
+      tagline: shopifyCollection.description?.slice(0, 40) || '',
+    };
+
+    // Normalize products from collection response
+    const products = (shopifyCollection.products?.edges || [])
+      .map((e: any) => normalizeShopifyProduct(e.node))
+      .filter(Boolean) as Product[];
+
+    console.log('Normalized products count:', products.length);
+    console.log('=== End getCollectionWithProductsByHandle ===\n');
+
+    return { collection, products };
+  } catch (error) {
+    console.error('Error fetching collection with products:', error);
+    
+    // Fallback to mock data
+    const mockCollection = COLLECTIONS.find((c) => c.handle === handle);
+    console.log('Fallback: Mock collection found:', !!mockCollection);
+    
+    if (!mockCollection) {
+      return { collection: null, products: [] };
+    }
+    
+    const mockProducts = PRODUCTS.filter((p) => p.collection === handle);
+    console.log(`Fallback: Mock products for "${handle}":`, mockProducts.length);
+    return { collection: mockCollection, products: mockProducts };
   }
 }
 

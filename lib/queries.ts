@@ -34,6 +34,23 @@ export const COLLECTIONS_QUERY = /* GraphQL */ `
   }
 `;
 
+export const COLLECTION_BY_HANDLE_QUERY = /* GraphQL */ `
+  query CollectionByHandle($handle: String!) {
+    collectionByHandle(handle: $handle) {
+      id handle title description image { url altText }
+      products(first: 50) {
+        edges { node {
+          id handle title description tags
+          priceRange { minVariantPrice { amount currencyCode } }
+          compareAtPriceRange { minVariantPrice { amount currencyCode } }
+          images(first: 4) { edges { node { url altText } } }
+          variants(first: 25) { edges { node { id title availableForSale selectedOptions { name value } } } }
+        } }
+      }
+    }
+  }
+`;
+
 export const CART_CREATE_MUTATION = /* GraphQL */ `
   mutation CartCreate($lines: [CartLineInput!]) {
     cartCreate(input: { lines: $lines }) {

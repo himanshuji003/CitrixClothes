@@ -8,15 +8,17 @@ import { useCart } from '@/lib/cart-context';
 import { useWishlist } from '@/lib/wishlist-context';
 import { cn } from '@/lib/utils';
 import SearchDialog from '@/components/search/SearchDialog';
-import CatalogDropdown from '@/components/layout/CatalogDropdown';
+
+
 
 const LOGO_URL = 'https://customer-assets.emergentagent.com/job_refined-retail-1/artifacts/7sv48thr_image.png';
 
 const NAV_LINKS = [
-  { label: 'New Arrivals', href: '/collections/new-arrivals' },
-  { label: 'Shop All', href: '/collections' },
-  { label: 'About', href: '/about' },
-  { label: 'Contact', href: '/contact' },
+  { href: '/collections/organza', label: 'Organza' },
+  { href: '/collections/silk', label: 'Silk' },
+  { href: '/collections/chanderi', label: 'Chanderi' },
+  { href: '/collections/muslin', label: 'Muslin' },
+  { href: '/collections', label: 'All' },
 ];
 
 export default function Navbar() {
@@ -95,6 +97,8 @@ export default function Navbar() {
                 <ShoppingBag className="h-5 w-5" />
                 {count > 0 && <span className="absolute top-0.5 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-700 text-cream-50 text-[10px] font-medium flex items-center justify-center">{count}</span>}
               </button>
+
+
             </div>
           </div>
         </div>

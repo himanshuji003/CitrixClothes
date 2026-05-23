@@ -50,21 +50,4 @@ export interface Cart {
   totalQuantity: number;
 }
 
-export interface LineItem {
-  title: string;
-  quantity: number;
-  price?: number;
-  image?: string;
-}
 
-export type FulfillmentStatus = 'UNFULFILLED' | 'PARTIAL' | 'FULFILLED';
-
-export interface Order {
-  id: string;
-  orderNumber?: string;
-  processedAt: string;
-  fulfillmentStatus: FulfillmentStatus;
-  totalPrice?: number;
-  currency?: string;
-  lineItems: LineItem[];
-}
